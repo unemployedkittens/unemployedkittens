@@ -1,6 +1,6 @@
 # Unemployed Kittens
 
-A responsive static landing page for a future information marketplace. Includes original AI-generated alien kitten imagery, coming-soon cards for rentals and the marketplace, a consultation inquiry card, About, and contact links. Rentals, payments, listings, and research bots are not implemented yet.
+A responsive static landing page for a future information marketplace. Includes original AI-generated alien kitten imagery, coming-soon cards for rentals and the marketplace, an AI search consultation offer, About, and contact links. Rentals, payments, listings, and research bots are not implemented yet.
 
 ## Local development
 

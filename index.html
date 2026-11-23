@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101914">
-  <meta name="description" content="Meet Unemployed Kittens: a marketplace for information. Explore research bots, discover knowledge, or ask us about a research consultation.">
+  <meta name="description" content="Meet Unemployed Kittens: a marketplace for information. Explore research bots, discover knowledge, or get help making your company easier to find in AI search.">
   <title>Unemployed Kittens — Curiosity, put to work.</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
@@ -33,14 +33,14 @@
       <div class="cards">
         <button class="card" type="button" data-destination="rent"><div class="card-image research" role="img" aria-label="A green alien kitten with two antennae researching at a desk in a lunar observatory."><span class="image-label">YOUR PERSONAL RESEARCH COMPANION</span><span class="image-number">01</span></div><div class="card-body"><div class="card-title"><h3>Rent a kitten</h3><span class="arrow" aria-hidden="true">↗</span></div><p>Give a curious bot a mission. Your kitten will search for information, chase down answers, and bring its discoveries back to you.</p><span class="card-link">Put curiosity to work <span aria-hidden="true">→</span></span></div></button>
         <button class="card" type="button" data-destination="market"><div class="card-image archive" role="img" aria-label="Two green alien kittens with antennae discover glowing knowledge orbs in a lush greenhouse."><span class="image-label">GOOD FINDS DESERVE TO BE SHARED</span><span class="image-number">02</span></div><div class="card-body"><div class="card-title"><h3>Explore the Information Marketplace</h3><span class="arrow" aria-hidden="true">↗</span></div><p>Someone may have already found your answer. Discover available information in the marketplace, or sell discoveries of your own.</p><span class="card-link">Discover something useful <span aria-hidden="true">→</span></span></div></button>
-        <a class="card" href="mailto:unemployedkittens@gmail.com?subject=Consultation%20inquiry">
-          <div class="card-image consultation" aria-hidden="true"><span class="image-label">HELP WITH YOUR RESEARCH PROJECT</span><span class="image-number">03</span></div>
+        <button class="card consultation-card" type="button" aria-haspopup="dialog" aria-controls="consultation-offer">
+          <div class="card-image consultation" aria-hidden="true"><span class="image-label">AI SEARCH CONSULTATION</span><span class="image-number">03</span></div>
           <div class="card-body">
-            <div class="card-title"><h3>Request a consultation</h3><span class="arrow" aria-hidden="true">↗</span></div>
-            <p>Tell us what you’re trying to find out. We can help you narrow your question, identify useful sources, and plan your next steps.</p>
-            <span class="card-link">Email us about your project <span aria-hidden="true">→</span></span>
+            <div class="card-title"><h3>Company not found by AI search?</h3><span class="arrow" aria-hidden="true">↗</span></div>
+            <p>Consult the Employed Kittens to get a step-by-step guide to make AI search engines find your company!</p>
+            <span class="card-link">See consultation details <span aria-hidden="true">→</span></span>
           </div>
-        </a>
+        </button>
       </div>
       <p class="launch-note"><span class="status-dot"></span> A new universe is taking shape. Kitten rentals and the marketplace are coming soon.</p>
     </section>
@@ -49,5 +49,22 @@
   </main>
   <footer class="wrap"><a class="footer-brand" href="#">unemployed kittens<span>✳</span></a><div><span>© <span id="year">2026</span> Unemployed Kittens</span><span>Made for curious life forms.</span><a href="#">Back to orbit ↑</a></div></footer>
   <dialog id="coming-soon" aria-labelledby="dialog-title"><button class="close" type="button" aria-label="Close dialog">×</button><p class="eyebrow">A NEW MISSION IS COMING</p><h2 id="dialog-title">Getting our paws ready.</h2><p id="dialog-description"></p><a class="button" href="mailto:unemployedkittens@gmail.com">Say hello by email ↗</a></dialog>
+  <dialog id="consultation-offer" aria-labelledby="consultation-title">
+    <button class="close" type="button" aria-label="Close dialog">×</button>
+    <h2 id="consultation-title">AI search consultation</h2>
+    <p><strong>$200 per consultation</strong></p>
+    <ul>
+      <li>A detailed step-by-step guide to help AI search engines discover your business.</li>
+      <li>Four hours of one-on-one consultation in total to help you implement the changes.</li>
+    </ul>
+    <details class="consultation-contact">
+      <summary class="button">Contact</summary>
+      <div class="consultation-contact-links">
+        <a href="https://wa.me/6589202646" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+        <a href="mailto:unemployedkittens@gmail.com?subject=AI%20search%20consultation">Email</a>
+        <a href="https://t.me/wantwotwee" target="_blank" rel="noopener noreferrer">Telegram</a>
+      </div>
+    </details>
+  </dialog>
 </body>
 </html>

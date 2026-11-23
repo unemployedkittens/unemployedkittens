@@ -29,21 +29,46 @@
   margin-top: auto;
 }
 
-@media (min-width: 960px) {
-  .cards {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .card-image {
-    height: clamp(220px, 23vw, 330px);
-  }
+.consultation-contact summary {
+  cursor: pointer;
 }
 
-@media (min-width: 601px) and (max-width: 959px) {
-  .cards .card:last-child {
-    grid-column: 1 / -1;
-    justify-self: center;
-    width: calc((100% - 27px) / 2);
+#consultation-offer ul {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 0 0 24px;
+  padding-inline-start: 20px;
+}
+
+#consultation-offer li + li {
+  margin-top: 8px;
+}
+
+.consultation-contact-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+.consultation-contact-links a {
+  color: var(--lime);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+@media (min-width: 601px) {
+  .cards {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .cards > .card {
+    grid-column: span 2;
+  }
+
+  .cards > .consultation-card {
+    grid-column: 2 / 4;
   }
 }
 
