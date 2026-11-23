@@ -11,9 +11,13 @@ document.querySelectorAll('[data-destination]').forEach(button => {
     comingSoon.showModal();
   });
 });
-document.querySelector('.consultation-card').addEventListener('click', () => {
-  document.querySelector('#consultation-offer').showModal();
-});
+const consultationOffer = document.querySelector('#consultation-offer');
+if (typeof consultationOffer?.showModal === 'function') {
+  document.querySelector('#consultation-card').addEventListener('click', event => {
+    consultationOffer.showModal();
+    event.preventDefault();
+  });
+}
 document.querySelectorAll('dialog').forEach(dialog => {
   dialog.querySelector('.close').addEventListener('click', () => dialog.close());
   dialog.addEventListener('click', event => {

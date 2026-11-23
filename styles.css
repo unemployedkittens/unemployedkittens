@@ -33,6 +33,25 @@
   cursor: pointer;
 }
 
+#consultation-offer:not([open]),
+.consultation-back {
+  display: none;
+}
+
+#consultation-offer:target:not([open]) {
+  display: block;
+  position: relative;
+  margin: 24px auto 0;
+}
+
+#consultation-offer:target:not([open]) button.close {
+  display: none;
+}
+
+#consultation-offer:target:not([open]) .consultation-back {
+  display: block;
+}
+
 #consultation-offer ul {
   color: var(--muted);
   font-size: 14px;
