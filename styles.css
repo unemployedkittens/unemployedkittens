@@ -4,4 +4,47 @@
 @media(max-width:600px){.wrap{width:calc(100% - 32px)}.nav{height:88px}.brand{font-size:13px;gap:8px}.brand img{width:34px;height:34px}.nav nav{gap:18px;font-size:11px}.nav nav>a:nth-child(2){display:none}.nav-contact{padding:7px 13px}.nav-contact span{margin-left:6px}.hero{min-height:760px}.hero-art{object-position:72% bottom;height:58%;top:auto}.hero:after{background:linear-gradient(180deg,#030c08 0%,#030c08 34%,#030c0800 68%,#030c0855)}.hero-content{padding:35px 24px}.hero .eyebrow{font-size:7px;letter-spacing:1.4px;margin-bottom:21px}h1{font-size:63px;letter-spacing:-3.5px;margin-bottom:18px}.hero-tagline{font-size:21px}.hero-description{font-size:12px;line-height:1.8;max-width:320px;margin-bottom:22px}.hero-caption{font-size:7px;bottom:19px;left:24px}.button{font-size:11px;padding:12px 19px}.ticker{margin-top:24px;padding-block:16px;gap:24px}.explore{padding-block:50px}.section-heading{display:block;margin-bottom:25px}.section-heading>p{margin-top:16px}.section-heading h2{font-size:33px}.cards{grid-template-columns:1fr;gap:23px}.card-image{height:290px}.card-body{padding:24px}.card-body p{font-size:13px}.launch-note{font-size:9px;padding-inline:15px}.about{grid-template-columns:1fr;gap:28px;padding-block:0 50px}.about-art{height:300px;background-position:90% 45%}.about-copy{padding-inline:7px}h2{font-size:34px}.contact{grid-template-columns:1fr;gap:25px;padding-block:45px}.contact h2{font-size:39px}.email{font-size:14px;gap:15px}.socials a{padding-block:15px}.footer-brand{font-size:30px;letter-spacing:-1.4px}.footer-brand>span{font-size:32px}footer>div{flex-wrap:wrap;font-size:8px}footer>div>span:nth-child(2){display:none}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{transition:none!important}}
 
+.card {
+  display: flex;
+  flex-direction: column;
+}
+
+.card-image {
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.card-image.consultation {
+  background: #101914 url('assets/kitten-consultation.webp') center / cover no-repeat;
+}
+
+.card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+}
+
+.card-link {
+  margin-top: auto;
+}
+
+@media (min-width: 960px) {
+  .cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .card-image {
+    height: clamp(220px, 23vw, 330px);
+  }
+}
+
+@media (min-width: 601px) and (max-width: 959px) {
+  .cards .card:last-child {
+    grid-column: 1 / -1;
+    justify-self: center;
+    width: calc((100% - 27px) / 2);
+  }
+}
+
 a span[aria-hidden="true"],.arrow,.socials a>span:last-child{display:inline-block;flex-shrink:0;width:20px;height:20px;font-size:0;background:center/contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d1f78a' stroke-width='1.5'%3E%3Cpath d='M5 19 19 5M5 5h14v14'/%3E%3C/svg%3E")}.button span[aria-hidden="true"]{filter:brightness(.2)}
