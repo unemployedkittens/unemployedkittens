@@ -1,0 +1,308 @@
+.rental-nav .nav-contact {
+  display: inline-flex;
+  align-items: center;
+}
+
+.rental-page {
+  max-width: 1160px;
+  padding-block: 30px 80px;
+}
+
+.rental-intro {
+  max-width: 650px;
+  margin-bottom: 36px;
+}
+
+.rental-intro h1 {
+  margin-bottom: 18px;
+}
+
+.rental-intro p {
+  color: var(--muted);
+  max-width: 540px;
+  margin-bottom: 18px;
+}
+
+.progress-button {
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: #172219;
+  color: var(--muted);
+  padding: 8px 13px;
+  font-size: 12px;
+}
+
+.rental-layout {
+  display: grid;
+  grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr);
+  align-items: start;
+  gap: clamp(20px, 4vw, 55px);
+}
+
+.rental-art {
+  position: sticky;
+  top: 24px;
+  display: block;
+  width: 100%;
+  height: clamp(420px, 49vw, 560px);
+  object-fit: cover;
+  object-position: 48% center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.rental-form {
+  min-width: 0;
+  padding: clamp(20px, 3vw, 34px);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #172219;
+}
+
+.preview-note {
+  margin: 0 0 26px;
+  padding: 12px 15px;
+  border: 1px solid #536546;
+  border-radius: 6px;
+  background: #1e2b1b;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.preview-note strong {
+  color: var(--lime);
+}
+
+.form-section,
+.priority-field,
+.payment-options {
+  min-width: 0;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.form-section {
+  padding-bottom: 24px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.form-section > legend {
+  padding: 0;
+  margin-bottom: 16px;
+  font-family: Manrope, Arial, sans-serif;
+  font-size: 23px;
+  line-height: 1.2;
+}
+
+.form-field + .form-field,
+.form-field + .form-columns,
+.form-columns + .form-field {
+  margin-top: 17px;
+}
+
+.form-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.form-columns .form-field {
+  margin-top: 0;
+}
+
+.form-field > label,
+.priority-field > legend,
+.payment-options > legend {
+  display: block;
+  padding: 0;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.optional {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.form-field > input,
+.form-field > textarea {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #546457;
+  border-radius: 5px;
+  background: var(--bg);
+  color: var(--ink);
+  padding: 9px 10px;
+  font: inherit;
+}
+
+.form-field > textarea {
+  resize: vertical;
+}
+
+.form-field > input[type="file"] {
+  font-size: 13px;
+}
+
+.form-field > input[type="file"]::file-selector-button {
+  margin-right: 10px;
+  padding: 6px 9px;
+  border: 1px solid #667950;
+  border-radius: 4px;
+  background: #243421;
+  color: var(--ink);
+}
+
+.form-field > input:focus-visible,
+.form-field > textarea:focus-visible,
+.choice input:focus-visible + span {
+  outline: 2px solid var(--lime);
+  outline-offset: 2px;
+}
+
+.field-help,
+.field-error {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.field-error {
+  color: #ffc4ab;
+}
+
+.field-error:empty,
+.payment-choice:empty {
+  margin: 0;
+}
+
+.priority-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.choice {
+  position: relative;
+  display: block;
+  cursor: pointer;
+}
+
+.choice input {
+  position: absolute;
+  inset: 0 auto auto 0;
+  opacity: 0;
+}
+
+.choice > span {
+  display: block;
+  height: 100%;
+  border: 1px solid #546457;
+  border-radius: 6px;
+  padding: 10px;
+  background: var(--bg);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.choice small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.choice input:checked + span {
+  border-color: var(--lime);
+  background: #23331d;
+  color: var(--lime);
+}
+
+.rental-page .button,
+.rental-dialog .button {
+  border: 0;
+  cursor: pointer;
+}
+
+.rental-page .button:hover,
+.rental-dialog .button:hover {
+  transform: none;
+}
+
+.rental-page .button:disabled,
+.form-field > input:disabled {
+  cursor: default;
+  opacity: .55;
+}
+
+#payment-choice + .form-field {
+  margin-top: 16px;
+}
+
+.rental-dialog {
+  max-height: calc(100% - 36px);
+}
+
+.rental-dialog h2 {
+  padding-right: 10px;
+}
+
+.payment-options {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.tracking-art {
+  display: block;
+  width: 100%;
+  height: 125px;
+  margin-bottom: 18px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.tracking-id {
+  display: block;
+  margin-bottom: 15px;
+  color: var(--lime);
+  font: 700 21px/1.4 monospace;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 850px) {
+  .rental-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .rental-art {
+    position: static;
+    height: clamp(185px, 40vw, 300px);
+    object-position: center 45%;
+  }
+}
+
+@media (max-width: 540px) {
+  .rental-page {
+    padding-block: 12px 50px;
+  }
+
+  .rental-intro h1 {
+    font-size: clamp(44px, 12vw, 63px);
+  }
+
+  .rental-intro {
+    margin-bottom: 24px;
+  }
+
+  .form-columns,
+  .priority-options {
+    grid-template-columns: 1fr;
+  }
+}

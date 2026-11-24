@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101914">
+  <meta name="description" content="Tell Unemployed Kittens what product or service you need and what matters most to you.">
+  <title>Rent a Kitten</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css?v=consultation-dialog">
+  <link rel="stylesheet" href="rent.css">
+  <script src="rent.js" defer></script>
+</head>
+<body>
+  <header class="nav wrap rental-nav">
+    <a class="brand" href="./" aria-label="Unemployed Kittens home"><img src="assets/favicon.svg" alt="" width="38" height="38"><span>unemployed<br>kittens</span></a>
+    <nav aria-label="Main navigation"><a class="nav-contact" href="./">Back to homepage <span aria-hidden="true">↗</span></a></nav>
+  </header>
+  <main class="wrap rental-page">
+    <header class="rental-intro">
+      <h1>Rent <em>a Kitten</em></h1>
+      <p>Tell us what you’re looking for and what matters most. Your kitten will search for options that fit your brief. The estimated turnaround is about two weeks.</p>
+      <button class="progress-button" type="button" disabled>Check Kitten Progress Status here</button>
+    </header>
+
+    <div class="rental-layout">
+      <img class="rental-art" src="assets/kitten-research-workshop.webp" alt="Two green alien kittens with glowing antennae study a map and a sample in a lunar research workshop." width="960" height="640">
+
+      <form id="rental-form" class="rental-form" method="post">
+        <p class="preview-note"><strong>Form preview.</strong> Use sample details and images. Payments and request delivery are coming soon.</p>
+        <noscript><p class="preview-note">Enable JavaScript to try the payment and tracking preview.</p></noscript>
+
+        <fieldset id="research-brief" class="form-section">
+          <legend>Tell us what you need</legend>
+
+          <div class="form-field">
+            <label for="products-services">Products/ Services</label>
+            <input id="products-services" name="products_services" type="text" maxlength="120" required aria-describedby="products-help">
+            <p id="products-help" class="field-help">Name what you’re looking for, such as brie cheese, tailoring, or air-con servicing.</p>
+          </div>
+
+          <div class="form-field">
+            <label for="specific-detail">Specific Product or Service Detail</label>
+            <textarea id="specific-detail" name="specific_detail" rows="4" maxlength="800" required aria-describedby="detail-help"></textarea>
+            <p id="detail-help" class="field-help">Include any must-haves, such as scaling and polishing only, Australian brie, a red silk dress in size M, or a package that includes chemical washing. Up to 800 characters.</p>
+          </div>
+
+          <div class="form-columns">
+            <div class="form-field">
+              <label for="amount">Amount required</label>
+              <input id="amount" name="amount" type="text" maxlength="100" required aria-describedby="amount-help">
+              <p id="amount-help" class="field-help">Include units, people, or a minimum order, such as 3 air-con units, 2 kg, or 1 person.</p>
+            </div>
+
+            <div class="form-field">
+              <label for="budget">Maximum Budget</label>
+              <input id="budget" name="maximum_budget" type="text" maxlength="80" required aria-describedby="budget-help">
+              <p id="budget-help" class="field-help">Include the currency and whether the budget is per unit or total, such as SGD 150 total.</p>
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label for="location">Location</label>
+            <input id="location" name="location" type="text" maxlength="140" required aria-describedby="location-help">
+            <p id="location-help" class="field-help">Enter any area, city, or country, such as Pasir Ris, Singapore, or Johor Bahru, Malaysia.</p>
+          </div>
+
+          <div class="form-field">
+            <label for="reference-image">Reference image <span class="optional">(optional)</span></label>
+            <input id="reference-image" name="reference_image" type="file" accept="image/jpeg,image/png,image/webp" aria-describedby="reference-help reference-error">
+            <p id="reference-help" class="field-help">An image can help a business estimate the price. JPG, PNG, or WebP, up to 5 MB.</p>
+            <p id="reference-error" class="field-error" role="status"></p>
+          </div>
+
+          <fieldset class="form-field priority-field">
+            <legend>What matters most?</legend>
+            <div class="priority-options">
+              <label class="choice">
+                <input type="radio" name="priority" value="value" required>
+                <span><strong>Value?</strong><small>Balance price and quality.</small></span>
+              </label>
+              <label class="choice">
+                <input type="radio" name="priority" value="cheap" required>
+                <span><strong>Cheap?</strong><small>Prioritise the lowest price.</small></span>
+              </label>
+              <label class="choice">
+                <input type="radio" name="priority" value="quality" required>
+                <span><strong>Quality?</strong><small>Prioritise quality or brand reputation.</small></span>
+              </label>
+            </div>
+          </fieldset>
+        </fieldset>
+
+        <fieldset class="form-section">
+          <legend>Payment and proof</legend>
+          <button id="open-payment" class="button" type="button" aria-haspopup="dialog" aria-controls="payment-dialog" disabled>Choose payment method <span aria-hidden="true">↗</span></button>
+          <p id="payment-choice" class="field-help payment-choice" role="status"></p>
+
+          <div class="form-field">
+            <label for="payment-proof">Payment screenshot</label>
+            <input id="payment-proof" name="payment_proof" type="file" accept="image/jpeg,image/png,image/webp" required disabled aria-describedby="proof-help proof-error">
+            <p id="proof-help" class="field-help">Choose a payment method, then attach a sample screenshot. JPG, PNG, or WebP, up to 5 MB.</p>
+            <p id="proof-error" class="field-error" role="status"></p>
+          </div>
+        </fieldset>
+
+        <fieldset class="form-section">
+          <legend>Where should we contact you?</legend>
+          <div class="form-field">
+            <label for="customer-email">Email</label>
+            <input id="customer-email" name="email" type="email" autocomplete="email" maxlength="254" required aria-describedby="email-help">
+            <p id="email-help" class="field-help">When rentals open, your tracking ID will be sent to this address.</p>
+          </div>
+
+          <div class="form-columns">
+            <div class="form-field">
+              <label for="whatsapp">WhatsApp <span class="optional">(optional)</span></label>
+              <input id="whatsapp" name="whatsapp" type="tel" autocomplete="tel" maxlength="40" aria-describedby="whatsapp-help">
+              <p id="whatsapp-help" class="field-help">Enter your number with the country code.</p>
+            </div>
+
+            <div class="form-field">
+              <label for="telegram">Telegram <span class="optional">(optional)</span></label>
+              <input id="telegram" name="telegram" type="text" maxlength="80" aria-describedby="telegram-help">
+              <p id="telegram-help" class="field-help">Enter your @username or number with the country code.</p>
+            </div>
+          </div>
+        </fieldset>
+
+        <button id="rent-now" class="button" type="submit" aria-haspopup="dialog" aria-controls="tracking-dialog" disabled>Rent a Kitten Now <span aria-hidden="true">↗</span></button>
+      </form>
+    </div>
+  </main>
+
+  <footer class="wrap">
+    <a class="footer-brand" href="./">unemployed kittens<span aria-hidden="true">✳</span></a>
+    <div><span>© 2026 Unemployed Kittens</span><a href="./">Back to unemployedkittens.com</a></div>
+  </footer>
+
+  <dialog id="payment-dialog" class="rental-dialog" aria-labelledby="payment-title">
+    <form id="payment-options" method="dialog">
+      <button class="close" type="submit" value="cancel" formnovalidate aria-label="Close payment options">×</button>
+      <h2 id="payment-title">Choose a payment method</h2>
+      <p>Payment links and QR codes are coming soon. Choose a method to try the next step with a sample screenshot.</p>
+
+      <fieldset class="payment-options">
+        <legend>Payment options</legend>
+        <label class="choice"><input type="radio" name="payment_method" value="PayNow" required><span><strong>PayNow</strong></span></label>
+        <label class="choice"><input type="radio" name="payment_method" value="Solana Crypto" required><span><strong>Solana Crypto</strong></span></label>
+        <label class="choice"><input type="radio" name="payment_method" value="Bank Transfer" required><span><strong>Bank Transfer</strong></span></label>
+      </fieldset>
+
+      <button class="button" type="submit" value="continue">Continue to payment proof</button>
+    </form>
+  </dialog>
+
+  <dialog id="tracking-dialog" class="rental-dialog" aria-labelledby="tracking-title">
+    <form method="dialog">
+      <button class="close" type="submit" aria-label="Close tracking ID">×</button>
+      <img class="tracking-art" src="assets/kitten-tracking-beacon.webp" alt="" width="640" height="427" loading="lazy">
+      <h2 id="tracking-title">Your preview tracking ID</h2>
+      <output id="tracking-id" class="tracking-id"></output>
+      <p>This sample ID is generated in your browser. When rentals open, we’ll email you a tracking ID you can use to check progress.</p>
+      <button class="button" type="submit">Done</button>
+    </form>
+  </dialog>
+</body>
+</html>

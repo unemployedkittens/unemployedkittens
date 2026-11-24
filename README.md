@@ -1,6 +1,8 @@
 # Unemployed Kittens
 
-A responsive static landing page for a future information marketplace. Includes original AI-generated alien kitten imagery, coming-soon cards for rentals and the marketplace, an AI search consultation offer, About, and contact links. Rentals, payments, listings, and research bots are not implemented yet.
+A responsive static landing page for an information marketplace, with a Rent a Kitten form preview, an AI search consultation offer, and contact links.
+
+The rental preview validates the research brief and image attachments and generates a demo tracking ID. It uses sample payment options and keeps form data in the browser. Live rentals will need payment links or QR codes, a submission endpoint, persistent tracking IDs, Telegram notifications, and email delivery for the owner and requester.
 
 ## Local development
 
@@ -10,7 +12,7 @@ No dependencies or build step. From this directory, run:
 python3 -m http.server 8000 --bind 127.0.0.1
 ```
 
-Open the local server in your browser. Edit `index.html`, `styles.css`, and `script.js` directly. Images are in `assets/`.
+Open the local server in your browser. The homepage is `index.html` and the rental form is `rent-a-kitten.html`. Images are in `assets/`.
 
 ## GitHub Pages
 
