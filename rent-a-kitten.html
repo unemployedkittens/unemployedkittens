@@ -4,12 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101914">
+  <meta name="referrer" content="no-referrer">
+  <meta name="rental-checkout-api" content="">
   <meta name="description" content="Tell Unemployed Kittens what product or service you need and what matters most to you.">
   <title>Rent a Kitten</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css?v=consultation-dialog">
-  <link rel="stylesheet" href="rent.css">
-  <script src="rent.js" defer></script>
+  <link rel="stylesheet" href="rent.css?v=stripe-checkout">
+  <script src="rent.js?v=stripe-checkout" defer></script>
 </head>
 <body>
   <header class="nav wrap rental-nav">
@@ -27,7 +29,9 @@
       <img class="rental-art" src="assets/kitten-research-workshop.webp" alt="Two green alien kittens with glowing antennae study a map and a sample in a lunar research workshop." width="960" height="640">
 
       <form id="rental-form" class="rental-form" method="post">
-        <p class="preview-note"><strong>Form preview.</strong> Use sample details and images. Payments and request delivery are coming soon.</p>
+        <p class="preview-note" data-preview-only><strong>Form preview.</strong> Use sample details and images. Payments and request delivery are coming soon.</p>
+        <p id="checkout-status" class="preview-note" role="status" hidden></p>
+        <a id="resume-checkout" class="text-link" hidden>Resume PayNow checkout</a>
         <noscript><p class="preview-note">Enable JavaScript to try the payment and tracking preview.</p></noscript>
 
         <fieldset id="research-brief" class="form-section">
@@ -91,7 +95,7 @@
           </fieldset>
         </fieldset>
 
-        <fieldset class="form-section">
+        <fieldset class="form-section" data-preview-only>
           <legend>Payment and proof</legend>
           <button id="open-payment" class="button" type="button" aria-haspopup="dialog" aria-controls="payment-dialog" disabled>Choose payment method <span aria-hidden="true">↗</span></button>
           <p id="payment-choice" class="field-help payment-choice" role="status"></p>
@@ -128,6 +132,7 @@
           </div>
         </fieldset>
 
+        <p class="field-help form-section-intro" data-live-only hidden>The one-time rental fee is S$20. Stripe will show a PayNow QR code after you submit your brief.</p>
         <button id="rent-now" class="button" type="submit" aria-haspopup="dialog" aria-controls="tracking-dialog" disabled>Rent a Kitten Now <span aria-hidden="true">↗</span></button>
       </form>
     </div>
@@ -161,7 +166,7 @@
       <img class="tracking-art" src="assets/kitten-tracking-beacon.webp" alt="" width="640" height="427" loading="lazy">
       <h2 id="tracking-title">Your preview tracking ID</h2>
       <output id="tracking-id" class="tracking-id"></output>
-      <p>This sample ID is generated in your browser. When rentals open, we’ll email you a tracking ID you can use to check progress.</p>
+      <p id="tracking-description">This sample ID is generated in your browser. When rentals open, we’ll email you a tracking ID you can use to check progress.</p>
       <button class="button" type="submit">Done</button>
     </form>
   </dialog>

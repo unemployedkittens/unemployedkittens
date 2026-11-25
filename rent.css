@@ -1,3 +1,13 @@
+[data-live-only][hidden],
+[data-preview-only][hidden],
+#resume-checkout[hidden] {
+  display: none;
+}
+
+#resume-checkout:not([hidden]) {
+  margin: 0 0 24px;
+}
+
 .rental-nav .nav-contact {
   display: inline-flex;
   align-items: center;
