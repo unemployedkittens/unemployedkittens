@@ -22,7 +22,7 @@ The typography uses Google Fonts with local system fallbacks. All kitten images 
 
 ## Stripe checkout
 
-The Node backend in `checkout/` saves rental briefs and optional reference images to a private SQLite database. It creates a one-time S$20 Checkout Session for cards and PayNow with the **UnemployedKittens** display name and confirms the rental only after Stripe sends a signed event for the matching paid session. The paid return page displays the tracking ID. Email, Telegram alerts, and the customer progress page require separate integrations.
+The Node backend in `checkout/` saves rental briefs and optional reference images to a private SQLite database. It creates a one-time S$20 Checkout Session for cards and PayNow with the **UnemployedKittens** display name and confirms the rental only after Stripe sends a signed event for the matching paid session. The paid return page displays the tracking ID. Email and the customer progress page require separate integrations.
 
 1. Deploy `checkout/` on a Node 24 HTTPS host with a persistent private volume. Run `npm ci` and `npm start` from that directory. Use `checkout/.env.example` as the environment variable reference. Set `RENTALS_DB_PATH` to a path on the private volume and `SITE_ORIGIN` to the website origin.
 2. In a Stripe sandbox, configure a one-time SGD 20 rental price and a payment method configuration with PayNow enabled. Set `STRIPE_RENTAL_PRICE_ID` and `STRIPE_PAYMENT_METHOD_CONFIGURATION` to their IDs. Store `STRIPE_RESTRICTED_KEY`, with Checkout Sessions write access, in the host's secret store.
@@ -34,3 +34,7 @@ Run `npm test` from `checkout/` to test the request and signed webhook flow loca
 ## USDC on Solana
 
 Set `SOLANA_RECEIVING_ADDRESS` to the merchant's public Solana wallet address. The live API exposes the Solana option only when that address is configured. `SOLANA_RPC_URL` optionally overrides the HTTPS mainnet RPC endpoint. The quote uses the latest available SGD-to-USD reference rate from Frankfurter, with USDC priced at USD parity and rounded to two decimals. The saved quote keeps the same amount and Solana Pay reference on retry. The API confirms payment only after a finalized transaction credits the merchant's USDC token account with the exact quoted amount and matches the reference. Each transaction can be applied to one rental.
+
+## Telegram rental alerts
+
+Set `TELEGRAM_BOT_TOKEN` and a random `TELEGRAM_PAIRING_CODE` in the host's secret store. In a private chat with the bot, send `/start` followed by the pairing code. A confirmation message indicates the chat has been saved. The backend queues an alert when a Stripe or Solana rental transitions to paid and retries temporary delivery failures. Alerts include the tracking ID and payment provider. The queue and paired chat are stored in the private SQLite database so they survive deploys.

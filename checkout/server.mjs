@@ -6,6 +6,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { pathToFileURL } from 'node:url';
 import Stripe from 'stripe';
 import { createSolanaPayments } from './solana.mjs';
+import { createTelegramAlerts, installTelegramOutbox } from './telegram.mjs';
 
 const rentalFee = 2000;
 const checkoutCurrency = 'sgd';
@@ -138,6 +139,7 @@ export function createRentalServer({ stripe, database, siteOrigin, webhookSecret
       signature TEXT UNIQUE
     ) STRICT;
   `);
+  installTelegramOutbox(database);
 
   const insertRental = database.prepare(`
     INSERT INTO rentals (request_id, tracking_id, fingerprint, brief_json, reference_image, reference_image_type, created_at)
@@ -379,6 +381,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     STRIPE_RENTAL_PRICE_ID: priceId,
     SOLANA_RECEIVING_ADDRESS: solanaRecipient,
     SOLANA_RPC_URL: solanaRpcUrl,
+    TELEGRAM_BOT_TOKEN: telegramToken,
+    TELEGRAM_PAIRING_CODE: telegramPairingCode,
     SITE_ORIGIN: configuredOrigin = 'https://unemployedkittens.com',
     RENTALS_DB_PATH: databasePath = './data/rentals.sqlite',
     PORT = 8787
@@ -407,8 +411,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
 
     const liveMode = key.startsWith('rk_live_');
     const solana = liveMode && solanaRecipient ? createSolanaPayments({ recipient: solanaRecipient, rpcUrl: solanaRpcUrl }) : undefined;
-    createRentalServer({
+    const server = createRentalServer({
       stripe, database, siteOrigin, webhookSecret, paymentConfiguration, priceId, liveMode, solana
-    }).listen(Number(PORT), () => console.log('Rental checkout server listening.'));
+    });
+    server.listen(Number(PORT), () => console.log('Rental checkout server listening.'));
+    if (liveMode && /^\d+:[A-Za-z0-9_-]+$/.test(telegramToken ?? '')) {
+      createTelegramAlerts({ database, token: telegramToken, pairingCode: telegramPairingCode }).start();
+    }
   }
 }
