@@ -5,6 +5,7 @@ import { dirname, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { pathToFileURL } from 'node:url';
 import Stripe from 'stripe';
+import { createSolanaPayments } from './solana.mjs';
 
 const rentalFee = 2000;
 const checkoutCurrency = 'sgd';
@@ -12,6 +13,7 @@ const checkoutPage = '/rent-a-kitten.html';
 const integrationIdentifier = 'rent-a-kitten-qrvxnmda';
 const maxImageBytes = 5_000_000;
 const stripeCheckoutMethods = new Set(['paynow', 'card', 'link']);
+const rentalIdPattern = /^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/;
 const paymentEvents = new Set([
   'checkout.session.completed',
   'checkout.session.async_payment_succeeded',
@@ -63,6 +65,7 @@ async function parseRental(request) {
   });
 
   const requestId = field(form, 'request_id', 36);
+  const provider = field(form, 'payment_provider', 8, false) || 'stripe';
   const brief = {
     products_services: field(form, 'products_services', 120),
     specific_detail: field(form, 'specific_detail', 800),
@@ -75,7 +78,7 @@ async function parseRental(request) {
     telegram: field(form, 'telegram', 80, false)
   };
 
-  if (!/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/.test(requestId) ||
+  if (!rentalIdPattern.test(requestId) || !['stripe', 'solana'].includes(provider) ||
       !['value', 'cheap', 'quality'].includes(brief.priority) ||
       !/^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)*$/.test(brief.email)) {
     throw new RequestError(400, 'Check your email and research priorities, then try again.');
@@ -99,8 +102,9 @@ async function parseRental(request) {
   }
 
   const briefJson = JSON.stringify(brief);
-  const fingerprint = createHash('sha256').update(briefJson).update(imageBytes ?? '').digest('hex');
-  return { requestId, brief, briefJson, fingerprint, imageBytes, imageType };
+  const fingerprint = createHash('sha256').update(briefJson).update(imageBytes ?? '')
+    .update(provider === 'solana' ? ':solana' : '').digest('hex');
+  return { requestId, provider, brief, briefJson, fingerprint, imageBytes, imageType };
 }
 
 function json(response, status, value) {
@@ -108,7 +112,7 @@ function json(response, status, value) {
   response.end(JSON.stringify(value));
 }
 
-export function createRentalServer({ stripe, database, siteOrigin, webhookSecret, paymentConfiguration, priceId, liveMode }) {
+export function createRentalServer({ stripe, database, siteOrigin, webhookSecret, paymentConfiguration, priceId, liveMode, solana }) {
   database.exec(`
     PRAGMA busy_timeout = 5000;
     PRAGMA journal_mode = WAL;
@@ -125,6 +129,13 @@ export function createRentalServer({ stripe, database, siteOrigin, webhookSecret
       session_expires_at INTEGER,
       status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'failed', 'expired')),
       paid_at INTEGER
+    ) STRICT;
+    CREATE TABLE IF NOT EXISTS solana_quotes (
+      request_id TEXT PRIMARY KEY REFERENCES rentals(request_id),
+      reference TEXT NOT NULL UNIQUE,
+      recipient TEXT NOT NULL,
+      usdc_atoms INTEGER NOT NULL CHECK (usdc_atoms > 0),
+      signature TEXT UNIQUE
     ) STRICT;
   `);
 
@@ -150,9 +161,76 @@ export function createRentalServer({ stripe, database, siteOrigin, webhookSecret
     UPDATE rentals SET session_id = ?, status = ?
     WHERE request_id = ? AND (session_id IS NULL OR session_id = ?) AND status = 'pending'
   `);
+  const getSolanaQuote = database.prepare(`
+    SELECT solana_quotes.*, rentals.status, rentals.tracking_id
+    FROM solana_quotes JOIN rentals USING (request_id) WHERE request_id = ?
+  `);
+  const saveSolanaQuote = database.prepare(`
+    INSERT INTO solana_quotes (request_id, reference, recipient, usdc_atoms) VALUES (?, ?, ?, ?)
+    ON CONFLICT(request_id) DO NOTHING
+  `);
+  const setSolanaSignature = database.prepare(`
+    UPDATE solana_quotes SET signature = ? WHERE request_id = ? AND signature IS NULL
+    AND NOT EXISTS (SELECT 1 FROM solana_quotes WHERE signature = ?)
+  `);
+  const markSolanaPaid = database.prepare(`
+    UPDATE rentals SET status = 'paid', paid_at = ? WHERE request_id = ? AND status = 'pending' AND session_id IS NULL
+  `);
+
+  async function solanaQuoteResponse(response, quote) {
+    if (quote.status === 'paid') {
+      return json(response, 200, { status: 'paid', trackingId: quote.tracking_id });
+    }
+    json(response, 200, { status: 'pending', ...(await solana.instructions(quote)) });
+  }
+
+  function findSolanaQuote(reference) {
+    if (!rentalIdPattern.test(reference ?? '')) {
+      throw new RequestError(400, 'Invalid Solana rental reference.');
+    }
+    const quote = getSolanaQuote.get(reference);
+    if (!quote) throw new RequestError(404, 'Solana rental reference not found.');
+    return quote;
+  }
+
+  async function verifySolana(request, response) {
+    const params = new URLSearchParams((await readBody(request, 1024)).toString());
+    const quote = findSolanaQuote(params.get('request_id'));
+    if (quote.status === 'paid') {
+      return json(response, 200, { status: 'paid', trackingId: quote.tracking_id });
+    }
+    const signatureInput = params.get('signature')?.trim();
+    if (signatureInput && !/^[1-9A-HJ-NP-Za-km-z]{64,88}$/.test(signatureInput)) {
+      throw new RequestError(400, 'Enter a valid Solana transaction signature.');
+    }
+
+    const signature = await solana.findPayment(quote, signatureInput);
+    if (!signature) return json(response, 200, { status: 'pending' });
+
+    database.exec('BEGIN IMMEDIATE');
+    try {
+      const update = setSolanaSignature.run(signature, quote.request_id, signature);
+      if (update.changes && markSolanaPaid.run(Math.floor(Date.now() / 1000), quote.request_id).changes !== 1) {
+        throw new Error('Solana payment could not be attached to a pending rental.');
+      }
+      database.exec('COMMIT');
+    } catch (error) {
+      database.exec('ROLLBACK');
+      throw error;
+    }
+
+    const confirmed = getSolanaQuote.get(quote.request_id);
+    if (confirmed.status !== 'paid') {
+      throw new RequestError(409, 'This transaction was already applied to another rental.');
+    }
+    json(response, 200, { status: 'paid', trackingId: confirmed.tracking_id });
+  }
 
   async function startCheckout(request, response) {
     const rental = await parseRental(request);
+    if (rental.provider === 'solana' && !solana) {
+      throw new RequestError(503, 'Solana checkout is unavailable. You can still pay through Stripe.');
+    }
     const now = Math.floor(Date.now() / 1000);
     insertRental.run(
       rental.requestId, `UK-${randomUUID().toUpperCase()}`, rental.fingerprint,
@@ -161,6 +239,14 @@ export function createRentalServer({ stripe, database, siteOrigin, webhookSecret
     const order = getRental.get(rental.requestId);
     if (order.fingerprint !== rental.fingerprint) {
       throw new RequestError(409, 'This rental reference is already attached to a different brief.');
+    }
+    if (rental.provider === 'solana') {
+      if (!getSolanaQuote.get(rental.requestId)) {
+        const quote = await solana.createQuote(rentalFee);
+        saveSolanaQuote.run(rental.requestId, quote.reference, quote.recipient, quote.usdc_atoms);
+      }
+      const quote = getSolanaQuote.get(rental.requestId);
+      return await solanaQuoteResponse(response, quote);
     }
     if (order.status !== 'pending' ||
         (order.session_expires_at && order.session_expires_at <= now) ||
@@ -249,6 +335,15 @@ export function createRentalServer({ stripe, database, siteOrigin, webhookSecret
       if (route.pathname === '/api/rentals' && request.method === 'POST' && origin === siteOrigin) {
         return await startCheckout(request, response);
       }
+      if (route.pathname === '/api/rentals/options' && request.method === 'GET') {
+        return json(response, 200, { solana: Boolean(solana) });
+      }
+      if (solana && route.pathname === '/api/rentals/solana' && request.method === 'GET') {
+        return await solanaQuoteResponse(response, findSolanaQuote(route.searchParams.get('request_id')));
+      }
+      if (solana && route.pathname === '/api/rentals/solana/verify' && request.method === 'POST' && origin === siteOrigin) {
+        return await verifySolana(request, response);
+      }
       if (route.pathname === '/api/rentals/status' && request.method === 'GET') {
         const sessionId = route.searchParams.get('session_id') ?? '';
         if (!/^cs_(test|live)_[A-Za-z0-9]{8,120}$/.test(sessionId)) {
@@ -282,6 +377,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     STRIPE_WEBHOOK_SECRET: webhookSecret,
     STRIPE_PAYMENT_METHOD_CONFIGURATION: paymentConfiguration,
     STRIPE_RENTAL_PRICE_ID: priceId,
+    SOLANA_RECEIVING_ADDRESS: solanaRecipient,
+    SOLANA_RPC_URL: solanaRpcUrl,
     SITE_ORIGIN: configuredOrigin = 'https://unemployedkittens.com',
     RENTALS_DB_PATH: databasePath = './data/rentals.sqlite',
     PORT = 8787
@@ -308,8 +405,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
       maxNetworkRetries: 2
     });
 
+    const liveMode = key.startsWith('rk_live_');
+    const solana = liveMode && solanaRecipient ? createSolanaPayments({ recipient: solanaRecipient, rpcUrl: solanaRpcUrl }) : undefined;
     createRentalServer({
-      stripe, database, siteOrigin, webhookSecret, paymentConfiguration, priceId, liveMode: key.startsWith('rk_live_')
+      stripe, database, siteOrigin, webhookSecret, paymentConfiguration, priceId, liveMode, solana
     }).listen(Number(PORT), () => console.log('Rental checkout server listening.'));
   }
 }
