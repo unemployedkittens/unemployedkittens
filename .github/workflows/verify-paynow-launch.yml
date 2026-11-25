@@ -14,14 +14,26 @@ jobs:
           python3 - <<'PY'
           import json
           import os
+          import time
           import uuid
           from urllib.error import HTTPError
-          from urllib.parse import urlsplit
+          from urllib.parse import parse_qs, urlencode, urlsplit
           from urllib.request import Request, urlopen
 
           api = 'https://rent-a-kitten-api-production.up.railway.app'
           site = 'https://unemployedkittens.com'
           request_id = str(uuid.uuid5(uuid.NAMESPACE_URL, site + '/smoke/' + os.environ['GITHUB_RUN_ID']))
+          for attempt in range(14):
+              try:
+                  with urlopen(api + '/api/rentals/options', timeout=8) as response:
+                      if json.load(response).get('solana'):
+                          break
+              except HTTPError as error:
+                  if error.code not in (404, 502, 503):
+                      raise
+              time.sleep(5)
+          else:
+              raise AssertionError('Solana checkout did not become available')
           with urlopen(api + '/health', timeout=15) as response:
               assert json.load(response) == {'ready': True, 'livemode': True}, 'Live API is not ready'
           print('Railway reports that the live API is ready.', flush=True)
@@ -63,4 +75,37 @@ jobs:
           else:
               raise AssertionError('An unsigned Stripe webhook was accepted')
           print('Unsigned webhook rejected. The checkout was left unpaid.', flush=True)
+          solana_id = str(uuid.uuid5(uuid.NAMESPACE_URL, site + '/solana-smoke/' + os.environ['GITHUB_RUN_ID']))
+          fields.update(request_id=solana_id, payment_provider='solana')
+          body = ''.join(f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n\r\n{value}\r\n' for key, value in fields.items())
+          body = (body + f'--{boundary}--\r\n').encode()
+          request = Request(api + '/api/rentals', data=body, headers={
+              'Origin': site,
+              'Content-Type': f'multipart/form-data; boundary={boundary}',
+          })
+          try:
+              with urlopen(request, timeout=35) as response:
+                  assert response.headers.get('Access-Control-Allow-Origin') == site
+                  quote = json.load(response)
+          except HTTPError as error:
+              raise AssertionError(f'Production Solana quote returned HTTP {error.code}') from None
+          uri = urlsplit(quote['uri'])
+          assert uri.scheme == 'solana' and uri.path == 'DzWDWWmdn1uTiKX5dbiCNtqQALfJwpgPxrcgqkqtjRYv'
+          params = parse_qs(uri.query)
+          assert float(quote['amount']) > 0 and params['amount'] == [quote['amount']]
+          assert params['spl-token'] == ['EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v']
+          assert quote['qr'].startswith('data:image/png;base64,')
+          assert quote['status'] == 'pending'
+          with urlopen(api + '/api/rentals/solana?' + urlencode({'request_id': solana_id}), timeout=15) as response:
+              assert json.load(response) == quote, 'Saved quote did not round-trip'
+          check = Request(api + '/api/rentals/solana/verify', data=urlencode({'request_id': solana_id}).encode(), headers={
+              'Origin': site,
+              'Content-Type': 'application/x-www-form-urlencoded',
+          })
+          try:
+              with urlopen(check, timeout=25) as response:
+                  assert json.load(response) == {'status': 'pending'}
+          except HTTPError as error:
+              raise AssertionError(f'Production Solana RPC check returned HTTP {error.code}') from None
+          print('USDC quote, configured recipient, saved reference, QR and live RPC verified without sending funds.', flush=True)
           PY
