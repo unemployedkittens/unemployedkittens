@@ -20,9 +20,9 @@ Push these files to the `main` branch. In the GitHub repository, open **Settings
 
 The typography uses Google Fonts with local system fallbacks. All kitten images are served from this repository.
 
-## Stripe PayNow checkout
+## Stripe checkout
 
-The Node backend in `checkout/` saves rental briefs and optional reference images to a private SQLite database. It creates a one-time S$20 Checkout Session with the **UnemployedKittens** display name and confirms the rental only after Stripe sends a signed event for the matching paid session. The paid return page displays the tracking ID. Email, Telegram alerts, and the customer progress page require separate integrations.
+The Node backend in `checkout/` saves rental briefs and optional reference images to a private SQLite database. It creates a one-time S$20 Checkout Session for cards and PayNow with the **UnemployedKittens** display name and confirms the rental only after Stripe sends a signed event for the matching paid session. The paid return page displays the tracking ID. Email, Telegram alerts, and the customer progress page require separate integrations.
 
 1. Deploy `checkout/` on a Node 24 HTTPS host with a persistent private volume. Run `npm ci` and `npm start` from that directory. Use `checkout/.env.example` as the environment variable reference. Set `RENTALS_DB_PATH` to a path on the private volume and `SITE_ORIGIN` to the website origin.
 2. In a Stripe sandbox, configure a one-time SGD 20 rental price and a payment method configuration with PayNow enabled. Set `STRIPE_RENTAL_PRICE_ID` and `STRIPE_PAYMENT_METHOD_CONFIGURATION` to their IDs. Store `STRIPE_RESTRICTED_KEY`, with Checkout Sessions write access, in the host's secret store.
@@ -30,3 +30,7 @@ The Node backend in `checkout/` saves rental briefs and optional reference image
 4. Set the `rental-checkout-api` meta tag in a staging copy of `rent-a-kitten.html` to the API's HTTPS origin. Run a full sandbox payment, check that the success page shows a tracking ID, and verify the paid rental in the private database. Repeat the configuration with the live price, restricted key, and webhook endpoint before setting the meta tag on the public website. An empty meta tag keeps the public form in preview mode.
 
 Run `npm test` from `checkout/` to test the request and signed webhook flow locally. The `rentals` table stores the tracking ID, payment state, and brief in `brief_json` for owner review via the private database. Keep database files and backups outside the static site.
+
+## USDC on Solana
+
+Set `SOLANA_RECEIVING_ADDRESS` to the merchant's public Solana wallet address. The live API exposes the Solana option only when that address is configured. `SOLANA_RPC_URL` optionally overrides the HTTPS mainnet RPC endpoint. The quote uses the latest available SGD-to-USD reference rate from Frankfurter, with USDC priced at USD parity and rounded to two decimals. The saved quote keeps the same amount and Solana Pay reference on retry. The API confirms payment only after a finalized transaction credits the merchant's USDC token account with the exact quoted amount and matches the reference. Each transaction can be applied to one rental.

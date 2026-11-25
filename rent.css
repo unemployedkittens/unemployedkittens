@@ -4,6 +4,30 @@
   display: none;
 }
 
+#resume-solana[hidden] {
+  display: none;
+}
+
+#resume-solana:not([hidden]) {
+  margin-bottom: 20px;
+}
+
+.solana-qr {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+#solana-verify {
+  margin-top: 20px;
+}
+
+#solana-verify .button {
+  margin-top: 14px;
+}
+
 #resume-checkout:not([hidden]) {
   margin: 0 0 24px;
 }

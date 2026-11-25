@@ -85,11 +85,20 @@ function isStripeCheckout(url) {
   return typeof url === 'string' && url.startsWith('https://checkout.stripe.com/');
 }
 
-function setupPayNow() {
+function setupStripeCheckout() {
   const notice = document.querySelector('#checkout-status');
   const resumeLink = document.querySelector('#resume-checkout');
+  const resumeSolana = document.querySelector('#resume-solana');
+  const paymentMethods = document.querySelector('#live-payment-methods');
+  const solanaDialog = document.querySelector('#solana-dialog');
+  const solanaVerify = document.querySelector('#solana-verify');
+  const solanaStatus = document.querySelector('#solana-status');
   const browserStorageKey = 'rent-a-kitten-checkout';
   let requestId;
+  let solanaRequestId;
+  let solanaPoll;
+  let solanaChecks = 0;
+  let checkingSolana = false;
 
   for (const element of document.querySelectorAll('[data-live-only]')) {
     element.hidden = false;
@@ -104,6 +113,98 @@ function setupPayNow() {
     notice.hidden = false;
   }
 
+  function showTracking(id) {
+    showStatus(`Payment confirmed. Your tracking ID is ${id}.`);
+    document.querySelector('#tracking-title').textContent = 'Your rental is confirmed';
+    document.querySelector('#tracking-description').textContent = 'Save this ID for your records.';
+    trackingId.textContent = id;
+    if (typeof trackingDialog.showModal === 'function') trackingDialog.showModal();
+  }
+
+  function openSolana(quote, id) {
+    if (quote.status === 'paid' && typeof quote.trackingId === 'string') {
+      rentButton.disabled = true;
+      showTracking(quote.trackingId);
+      return;
+    }
+    if (quote.status !== 'pending' || !quote.uri?.startsWith('solana:') || !quote.qr?.startsWith('data:image/png;base64,')) {
+      throw new Error('Invalid payment instructions.');
+    }
+    solanaRequestId = id;
+    const location = new URL(window.location.href);
+    location.search = new URLSearchParams({ checkout: 'solana', request_id: id });
+    history.replaceState(null, '', location);
+    document.querySelector('#solana-amount').textContent = quote.amount;
+    document.querySelector('#solana-qr').src = quote.qr;
+    document.querySelector('#solana-wallet-link').href = quote.uri;
+    document.querySelector('#solana-signature').value = '';
+    solanaStatus.textContent = '';
+    showStatus('Your rental brief is saved. Resume the Solana payment to check its status.');
+    resumeSolana.hidden = false;
+    rentButton.disabled = true;
+    solanaDialog.showModal();
+    startSolanaPoll();
+  }
+
+  async function checkSolanaPayment(signature = '') {
+    if (checkingSolana || !solanaRequestId) return;
+    checkingSolana = true;
+    solanaVerify.querySelector('button').disabled = true;
+    solanaStatus.textContent = 'Checking the Solana network…';
+    try {
+      const response = await fetch(new URL('/api/rentals/solana/verify', checkoutApi), {
+        method: 'POST',
+        body: new URLSearchParams({ request_id: solanaRequestId, signature }),
+        signal: AbortSignal.timeout(20_000)
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        solanaStatus.textContent = result.error || 'The payment check is temporarily unavailable.';
+      } else if (result.status === 'paid' && typeof result.trackingId === 'string') {
+        clearInterval(solanaPoll);
+        solanaDialog.close();
+        resumeSolana.hidden = true;
+        showTracking(result.trackingId);
+      } else {
+        solanaStatus.textContent = 'Waiting for a matching finalized payment. You can check again in a moment.';
+      }
+    } catch {
+      solanaStatus.textContent = 'The Solana network could not be reached. Check again in a moment.';
+    } finally {
+      checkingSolana = false;
+      solanaVerify.querySelector('button').disabled = false;
+    }
+  }
+
+  function startSolanaPoll() {
+    solanaChecks = 0;
+    clearInterval(solanaPoll);
+    solanaPoll = setInterval(() => {
+      if (++solanaChecks > 12) {
+        clearInterval(solanaPoll);
+        return;
+      }
+      checkSolanaPayment();
+    }, 8_000);
+  }
+
+  solanaDialog.querySelector('.close').addEventListener('click', () => solanaDialog.close());
+  solanaDialog.addEventListener('close', () => clearInterval(solanaPoll));
+  resumeSolana.addEventListener('click', () => {
+    solanaDialog.showModal();
+    startSolanaPoll();
+  });
+  solanaVerify.addEventListener('submit', event => {
+    event.preventDefault();
+    checkSolanaPayment(document.querySelector('#solana-signature').value.trim());
+  });
+
+  fetch(new URL('/api/rentals/options', checkoutApi), { signal: AbortSignal.timeout(5_000) })
+    .then(response => response.ok ? response.json() : null)
+    .then(options => {
+      if (options?.solana === true && typeof solanaDialog.showModal === 'function') paymentMethods.hidden = false;
+    }).catch(() => {});
+
   rentalForm.addEventListener('input', () => { requestId = undefined; });
   rentalForm.addEventListener('submit', async event => {
     event.preventDefault();
@@ -111,10 +212,11 @@ function setupPayNow() {
       return;
     }
     rentButton.disabled = true;
-    showStatus('Saving your rental and opening PayNow…');
     requestId ??= crypto.randomUUID();
     const data = new FormData(rentalForm);
     data.set('request_id', requestId);
+    const solanaPayment = data.get('payment_provider') === 'solana';
+    showStatus(solanaPayment ? 'Saving your rental and getting a USDC quote…' : 'Saving your rental and opening Stripe Checkout…');
 
     try {
       const response = await fetch(new URL('/api/rentals', checkoutApi), {
@@ -125,6 +227,9 @@ function setupPayNow() {
       const result = await response.json();
       if (!response.ok) {
         showStatus(result.error || 'Checkout is temporarily unavailable. Please try again.');
+      } else if (solanaPayment) {
+        openSolana(result, data.get('request_id'));
+        return;
       } else if (isStripeCheckout(result.url)) {
         try { sessionStorage.setItem(browserStorageKey, result.url); } catch {}
         window.location.assign(result.url);
@@ -150,6 +255,18 @@ function setupPayNow() {
       resumeLink.hidden = false;
     }
     notice.scrollIntoView({ block: 'nearest' });
+  } else if (returnParams.get('checkout') === 'solana') {
+    rentButton.disabled = true;
+    const id = returnParams.get('request_id');
+    const quoteUrl = new URL('/api/rentals/solana', checkoutApi);
+    quoteUrl.searchParams.set('request_id', id ?? '');
+    fetch(quoteUrl, { signal: AbortSignal.timeout(10_000) })
+      .then(response => {
+        if (!response.ok) throw new Error('Missing Solana quote.');
+        return response.json();
+      })
+      .then(quote => openSolana(quote, id))
+      .catch(() => showStatus('Your Solana payment could not be loaded. Refresh to try again or contact us if you already paid.'));
   } else if (returnParams.get('checkout') === 'return') {
     rentButton.disabled = true;
     const sessionId = returnParams.get('session_id') ?? '';
@@ -164,7 +281,7 @@ function setupPayNow() {
   async function checkPayment(sessionId) {
     const statusUrl = new URL('/api/rentals/status', checkoutApi);
     statusUrl.searchParams.set('session_id', sessionId);
-    showStatus('Checking your PayNow payment…');
+    showStatus('Checking your payment…');
     notice.scrollIntoView({ block: 'nearest' });
 
     for (let attempt = 0; attempt < 10; attempt += 1) {
@@ -173,14 +290,8 @@ function setupPayNow() {
         if (response.ok) {
           const result = await response.json();
           if (result.status === 'paid' && typeof result.trackingId === 'string') {
-            showStatus(`Payment confirmed. Your tracking ID is ${result.trackingId}.`);
-            document.querySelector('#tracking-title').textContent = 'Your rental is confirmed';
-            document.querySelector('#tracking-description').textContent = 'Save this ID for your records.';
-            trackingId.textContent = result.trackingId;
             try { sessionStorage.removeItem(browserStorageKey); } catch {}
-            if (typeof trackingDialog.showModal === 'function') {
-              trackingDialog.showModal();
-            }
+            showTracking(result.trackingId);
             return;
           }
           if (result.status === 'failed' || result.status === 'expired') {
@@ -197,7 +308,7 @@ function setupPayNow() {
 }
 
 if (checkoutApi) {
-  setupPayNow();
+  setupStripeCheckout();
 } else {
   setupPreview();
 }

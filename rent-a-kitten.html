@@ -10,8 +10,8 @@
   <title>Rent a Kitten</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css?v=consultation-dialog">
-  <link rel="stylesheet" href="rent.css?v=stripe-checkout">
-  <script src="rent.js?v=stripe-checkout-live" defer></script>
+  <link rel="stylesheet" href="rent.css?v=payment-options">
+  <script src="rent.js?v=payment-options" defer></script>
 </head>
 <body>
   <header class="nav wrap rental-nav">
@@ -31,7 +31,8 @@
       <form id="rental-form" class="rental-form" method="post">
         <p class="preview-note" data-preview-only hidden><strong>Form preview.</strong> Use sample details and images. Payments and request delivery are coming soon.</p>
         <p id="checkout-status" class="preview-note" role="status" hidden></p>
-        <a id="resume-checkout" class="text-link" hidden>Resume PayNow checkout</a>
+        <a id="resume-checkout" class="text-link" hidden>Resume Stripe checkout</a>
+        <button id="resume-solana" class="button" type="button" hidden>Resume Solana payment</button>
         <noscript><p class="preview-note">Enable JavaScript to use the rental form and checkout.</p></noscript>
 
         <fieldset id="research-brief" class="form-section">
@@ -111,7 +112,7 @@
         <fieldset class="form-section">
           <legend>Where should we contact you?</legend>
           <p class="field-help form-section-intro" data-preview-only hidden>After you have successfully rented a kitten, you will receive a Tracking ID. You may check the progress of the job in the "Check your Kitten Progress Status here" page. When the job is completed, we will send you a notification via your e-mail.</p>
-          <p class="field-help form-section-intro" data-live-only hidden>Once Stripe confirms your payment, your tracking ID will appear on this page. Save it for any questions about your rental.</p>
+          <p class="field-help form-section-intro" data-live-only hidden>Once your payment is confirmed, your tracking ID will appear on this page. Save it for any questions about your rental.</p>
           <div class="form-field">
             <label for="customer-email">Email</label>
             <input id="customer-email" name="email" type="email" autocomplete="email" maxlength="254" required aria-describedby="email-help">
@@ -133,7 +134,14 @@
           </div>
         </fieldset>
 
-        <p class="field-help form-section-intro" data-live-only hidden>The one-time rental fee is S$20. Stripe will show a PayNow QR code after you submit your brief.</p>
+        <p class="field-help form-section-intro" data-live-only hidden>The one-time rental fee is S$20. Stripe accepts credit and debit cards and PayNow.</p>
+        <fieldset id="live-payment-methods" class="form-section" hidden>
+          <legend>Choose how to pay</legend>
+          <div class="payment-options">
+            <label class="choice"><input type="radio" name="payment_provider" value="stripe" checked><span><strong>Credit or debit card / PayNow</strong><small>Pay S$20 through Stripe.</small></span></label>
+            <label class="choice"><input type="radio" name="payment_provider" value="solana"><span><strong>USDC on Solana</strong><small>Get a USDC quote for the S$20 fee and pay with a Solana wallet.</small></span></label>
+          </div>
+        </fieldset>
         <button id="rent-now" class="button" type="submit" aria-haspopup="dialog" aria-controls="tracking-dialog" disabled>Rent a Kitten Now <span aria-hidden="true">↗</span></button>
       </form>
     </div>
@@ -158,6 +166,22 @@
       </fieldset>
 
       <button class="button" type="submit" value="continue">Continue to payment proof</button>
+    </form>
+  </dialog>
+
+  <dialog id="solana-dialog" class="rental-dialog" aria-labelledby="solana-title">
+    <button class="close" type="button" aria-label="Close Solana payment">×</button>
+    <h2 id="solana-title">Pay with USDC on Solana</h2>
+    <p class="tracking-id"><span id="solana-amount"></span> USDC</p>
+    <p>Scan this order’s QR code in a Solana Pay wallet, or open the wallet link on your phone. Keep this page open to check confirmation.</p>
+    <img id="solana-qr" class="solana-qr" width="220" height="220" alt="Scan the Solana Pay QR code for this rental">
+    <a id="solana-wallet-link" class="text-link">Open Solana wallet</a>
+    <form id="solana-verify" class="form-field">
+      <label for="solana-signature">Transaction signature <span class="optional">(optional)</span></label>
+      <input id="solana-signature" type="text" maxlength="88" spellcheck="false" autocomplete="off">
+      <p class="field-help">If detection takes a while, paste the transaction signature from your wallet. Use the QR code or wallet link above so the transfer includes your rental reference.</p>
+      <p id="solana-status" class="field-help" role="status"></p>
+      <button class="button" type="submit">Check payment</button>
     </form>
   </dialog>
 
