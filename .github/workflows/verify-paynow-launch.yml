@@ -1,0 +1,66 @@
+name: Verify PayNow checkout
+on:
+  push:
+    branches: [verify-paynow-launch]
+permissions: {}
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check production API without completing a payment
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import uuid
+          from urllib.error import HTTPError
+          from urllib.parse import urlsplit
+          from urllib.request import Request, urlopen
+
+          api = 'https://rent-a-kitten-api-production.up.railway.app'
+          site = 'https://unemployedkittens.com'
+          request_id = str(uuid.uuid5(uuid.NAMESPACE_URL, site + '/smoke/' + os.environ['GITHUB_RUN_ID']))
+          with urlopen(api + '/health', timeout=15) as response:
+              assert json.load(response) == {'ready': True, 'livemode': True}, 'Live API is not ready'
+          print('Railway reports that the live API is ready.', flush=True)
+
+          fields = {
+              'request_id': request_id,
+              'products_services': 'Checkout verification only',
+              'specific_detail': 'Launch smoke test. This unpaid request is not a customer rental.',
+              'amount': '1',
+              'maximum_budget': 'SGD 20',
+              'location': 'Singapore',
+              'priority': 'value',
+              'email': 'checkout-smoke@example.com',
+          }
+          boundary = uuid.uuid4().hex
+          body = ''.join(f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n\r\n{value}\r\n' for key, value in fields.items())
+          body = (body + f'--{boundary}--\r\n').encode()
+          request = Request(api + '/api/rentals', data=body, headers={
+              'Origin': site,
+              'Content-Type': f'multipart/form-data; boundary={boundary}',
+          })
+
+          def checkout():
+              with urlopen(request, timeout=35) as response:
+                  assert response.headers.get('Access-Control-Allow-Origin') == site, 'Public site is missing CORS access'
+                  url = json.load(response)['url']
+                  parsed = urlsplit(url)
+                  assert parsed.scheme == 'https' and parsed.netloc == 'checkout.stripe.com', 'Unexpected checkout destination'
+                  return url
+          first = checkout()
+          assert checkout() == first, 'Retry created a different checkout'
+          print('Saved rental and created one hosted Stripe Checkout Session across two modern-form submissions.', flush=True)
+          print('Verification request:', request_id, flush=True)
+
+          try:
+              urlopen(Request(api + '/api/stripe/webhook', data=b'{}'), timeout=15)
+          except HTTPError as error:
+              assert error.code == 400, f'Unsigned webhook returned {error.code}'
+          else:
+              raise AssertionError('An unsigned Stripe webhook was accepted')
+          print('Unsigned webhook rejected. The checkout was left unpaid.', flush=True)
+          PY
