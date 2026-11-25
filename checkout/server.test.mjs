@@ -55,6 +55,7 @@ test('stores the brief before checkout and confirms it only after an authenticat
   await once(server, 'listening');
   const api = `http://127.0.0.1:${server.address().port}`;
   const statusUrl = `${api}/api/rentals/status?session_id=${session.id}`;
+  assert.deepEqual(await (await fetch(`${api}/health`)).json(), { ready: true, livemode: false });
   const brief = {
     request_id: requestId, products_services: 'Brie', specific_detail: 'Australian origin',
     amount: '2 kg', maximum_budget: 'SGD 100', location: 'Singapore',

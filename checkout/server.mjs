@@ -230,6 +230,9 @@ export function createRentalServer({ stripe, database, siteOrigin, webhookSecret
   return createServer(async (request, response) => {
     try {
       const route = new URL(request.url, siteOrigin);
+      if (route.pathname === '/health' && request.method === 'GET') {
+        return json(response, 200, { ready: true, livemode: liveMode });
+      }
       if (route.pathname === '/api/stripe/webhook' && request.method === 'POST') {
         return await receiveWebhook(request, response);
       }
@@ -283,23 +286,29 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     PORT = 8787
   } = process.env;
 
-  if (!/^rk_(?:live|test)_/.test(key ?? '') || !webhookSecret?.startsWith('whsec_') ||
-      !paymentConfiguration?.startsWith('pmc_') || !priceId?.startsWith('price_')) {
-    throw new Error('Configure the Stripe restricted key, webhook secret, payment configuration, and rental price.');
+  const configured = /^rk_(?:live|test)_/.test(key ?? '') && webhookSecret?.startsWith('whsec_') &&
+    paymentConfiguration?.startsWith('pmc_') && priceId?.startsWith('price_');
+  if (!configured) {
+    createServer((request, response) => {
+      if (request.url === '/health' && request.method === 'GET') {
+        return json(response, 200, { ready: false });
+      }
+      json(response, 503, { error: 'Rental checkout is being set up.' });
+    }).listen(Number(PORT), () => console.log('Rental checkout awaiting Stripe configuration.'));
+  } else {
+    const siteOrigin = new URL(configuredOrigin).origin;
+    mkdirSync(dirname(databasePath), { recursive: true, mode: 0o700 });
+    const previousUmask = process.umask(0o077);
+    const database = new DatabaseSync(databasePath);
+    process.umask(previousUmask);
+    const stripe = new Stripe(key, {
+      apiVersion: '2026-11-18.endive',
+      timeout: 10_000,
+      maxNetworkRetries: 2
+    });
+
+    createRentalServer({
+      stripe, database, siteOrigin, webhookSecret, paymentConfiguration, priceId, liveMode: key.startsWith('rk_live_')
+    }).listen(Number(PORT), () => console.log('Rental checkout server listening.'));
   }
-
-  const siteOrigin = new URL(configuredOrigin).origin;
-  mkdirSync(dirname(databasePath), { recursive: true, mode: 0o700 });
-  const previousUmask = process.umask(0o077);
-  const database = new DatabaseSync(databasePath);
-  process.umask(previousUmask);
-  const stripe = new Stripe(key, {
-    apiVersion: '2026-11-18.endive',
-    timeout: 10_000,
-    maxNetworkRetries: 2
-  });
-
-  createRentalServer({
-    stripe, database, siteOrigin, webhookSecret, paymentConfiguration, priceId, liveMode: key.startsWith('rk_live_')
-  }).listen(Number(PORT), () => console.log('Rental checkout server listening.'));
 }
