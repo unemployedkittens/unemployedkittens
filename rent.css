@@ -173,6 +173,10 @@
   line-height: 1.55;
 }
 
+.form-section-intro {
+  margin: 0 0 16px;
+}
+
 .field-error {
   color: #ffc4ab;
 }
