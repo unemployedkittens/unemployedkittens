@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101914">
   <meta name="referrer" content="no-referrer">
-  <meta name="rental-checkout-api" content="">
+  <meta name="rental-checkout-api" content="https://rent-a-kitten-api-production.up.railway.app">
   <meta name="description" content="Tell Unemployed Kittens what product or service you need and what matters most to you.">
   <title>Rent a Kitten</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css?v=consultation-dialog">
   <link rel="stylesheet" href="rent.css?v=stripe-checkout">
-  <script src="rent.js?v=stripe-checkout" defer></script>
+  <script src="rent.js?v=stripe-checkout-live" defer></script>
 </head>
 <body>
   <header class="nav wrap rental-nav">
@@ -29,10 +29,10 @@
       <img class="rental-art" src="assets/kitten-research-workshop.webp" alt="Two green alien kittens with glowing antennae study a map and a sample in a lunar research workshop." width="960" height="640">
 
       <form id="rental-form" class="rental-form" method="post">
-        <p class="preview-note" data-preview-only><strong>Form preview.</strong> Use sample details and images. Payments and request delivery are coming soon.</p>
+        <p class="preview-note" data-preview-only hidden><strong>Form preview.</strong> Use sample details and images. Payments and request delivery are coming soon.</p>
         <p id="checkout-status" class="preview-note" role="status" hidden></p>
         <a id="resume-checkout" class="text-link" hidden>Resume PayNow checkout</a>
-        <noscript><p class="preview-note">Enable JavaScript to try the payment and tracking preview.</p></noscript>
+        <noscript><p class="preview-note">Enable JavaScript to use the rental form and checkout.</p></noscript>
 
         <fieldset id="research-brief" class="form-section">
           <legend>Tell us <em>what you want to find out</em></legend>
@@ -95,7 +95,7 @@
           </fieldset>
         </fieldset>
 
-        <fieldset class="form-section" data-preview-only>
+        <fieldset class="form-section" data-preview-only hidden>
           <legend>Payment and proof</legend>
           <button id="open-payment" class="button" type="button" aria-haspopup="dialog" aria-controls="payment-dialog" disabled>Choose payment method <span aria-hidden="true">↗</span></button>
           <p id="payment-choice" class="field-help payment-choice" role="status"></p>
@@ -110,7 +110,8 @@
 
         <fieldset class="form-section">
           <legend>Where should we contact you?</legend>
-          <p class="field-help form-section-intro">After you have successfully rented a kitten, you will receive a Tracking ID. You may check the progress of the job in the "Check your Kitten Progress Status here" page. When the job is completed, we will send you a notification via your e-mail.</p>
+          <p class="field-help form-section-intro" data-preview-only hidden>After you have successfully rented a kitten, you will receive a Tracking ID. You may check the progress of the job in the "Check your Kitten Progress Status here" page. When the job is completed, we will send you a notification via your e-mail.</p>
+          <p class="field-help form-section-intro" data-live-only hidden>Once Stripe confirms your payment, your tracking ID will appear on this page. Save it for any questions about your rental.</p>
           <div class="form-field">
             <label for="customer-email">Email</label>
             <input id="customer-email" name="email" type="email" autocomplete="email" maxlength="254" required aria-describedby="email-help">

@@ -1,8 +1,8 @@
 # Unemployed Kittens
 
-A responsive static landing page for an information marketplace, with a Rent a Kitten form preview, an AI search consultation offer, and contact links.
+A responsive static landing page for an information marketplace, with a Rent a Kitten form, an AI search consultation offer, and contact links.
 
-The rental preview validates the research brief and image attachments and generates a demo tracking ID. It uses sample payment options and keeps form data in the browser.
+The live rental form sends the brief to the checkout backend on Railway. A copy with an empty checkout API URL runs in preview mode with sample payments and demo tracking IDs.
 
 ## Local development
 

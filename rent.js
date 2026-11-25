@@ -37,6 +37,10 @@ for (const { input, error } of imageInputs) {
 }
 
 function setupPreview() {
+  for (const element of document.querySelectorAll('[data-preview-only]')) {
+    element.hidden = false;
+  }
+
   paymentButton.addEventListener('click', () => {
     const briefIsValid = Array.from(researchBrief.elements).every(field => field.reportValidity());
     if (briefIsValid) {
@@ -87,9 +91,6 @@ function setupPayNow() {
   const browserStorageKey = 'rent-a-kitten-checkout';
   let requestId;
 
-  for (const element of document.querySelectorAll('[data-preview-only]')) {
-    element.hidden = true;
-  }
   for (const element of document.querySelectorAll('[data-live-only]')) {
     element.hidden = false;
   }
