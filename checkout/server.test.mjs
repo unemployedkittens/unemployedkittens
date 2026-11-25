@@ -21,7 +21,7 @@ test('stores the brief before checkout and confirms it only after an authenticat
     mode: 'payment',
     url: 'https://checkout.stripe.com/c/fixture',
     expires_at: Math.floor(Date.now() / 1000) + 1200,
-    payment_method_types: ['paynow'],
+    payment_method_types: ['card', 'paynow', 'link'],
     metadata: { service: 'rent_a_kitten', checkout_source: 'rental_form' },
     client_reference_id: requestId,
     status: 'complete',
@@ -36,6 +36,7 @@ test('stores the brief before checkout and confirms it only after an authenticat
       assert.deepEqual(parameters.branding_settings, { display_name: 'UnemployedKittens' });
       assert.deepEqual(parameters.line_items, [{ price: 'price_fixture', quantity: 1 }]);
       assert.equal(parameters.payment_method_configuration, 'pmc_fixture');
+      assert.deepEqual(parameters.excluded_payment_method_types, ['alipay']);
       assert.equal(parameters.automatic_tax.enabled, false);
       assert.equal(parameters.adaptive_pricing.enabled, false);
       assert.equal(parameters.client_reference_id, requestId);

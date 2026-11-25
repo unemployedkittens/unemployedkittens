@@ -11,6 +11,7 @@ const checkoutCurrency = 'sgd';
 const checkoutPage = '/rent-a-kitten.html';
 const integrationIdentifier = 'rent-a-kitten-qrvxnmda';
 const maxImageBytes = 5_000_000;
+const stripeCheckoutMethods = new Set(['paynow', 'card', 'link']);
 const paymentEvents = new Set([
   'checkout.session.completed',
   'checkout.session.async_payment_succeeded',
@@ -177,7 +178,7 @@ export function createRentalServer({ stripe, database, siteOrigin, webhookSecret
       client_reference_id: rental.requestId,
       customer_email: rental.brief.email,
       payment_method_configuration: paymentConfiguration,
-      excluded_payment_method_types: ['alipay', 'card'],
+      excluded_payment_method_types: ['alipay'],
       adaptive_pricing: { enabled: false },
       automatic_tax: { enabled: false },
       branding_settings: { display_name: 'UnemployedKittens' },
@@ -189,9 +190,9 @@ export function createRentalServer({ stripe, database, siteOrigin, webhookSecret
 
     if (!session.url?.startsWith('https://checkout.stripe.com/') ||
         session.livemode !== liveMode || session.currency !== checkoutCurrency || session.amount_total !== rentalFee ||
-        !session.payment_method_types?.includes('paynow') ||
-        session.payment_method_types.some(method => method !== 'paynow')) {
-      throw new RequestError(503, 'PayNow checkout is unavailable. Please try again later.');
+        !session.payment_method_types?.some(method => method === 'paynow' || method === 'card') ||
+        session.payment_method_types.some(method => !stripeCheckoutMethods.has(method))) {
+      throw new RequestError(503, 'Stripe checkout is unavailable. Please try again later.');
     }
 
     const updates = setSession.run(session.id, session.url, session.expires_at, rental.requestId, session.id);
