@@ -14,14 +14,15 @@ function initializeOwnerMail() {
 }
 
 function doPost(event) {
-  const raw = event?.postData?.contents;
-  if (!raw || raw.length > 6_800_000) return respond(false);
+  const raw = event && event.postData && event.postData.contents;
+  if (!raw || raw.length > 6800000) return respond(false);
 
   try {
     const { payload, signature } = JSON.parse(raw);
     const properties = PropertiesService.getScriptProperties();
     const secret = properties.getProperty('OWNER_MAIL_SECRET');
-    if (!secret || typeof payload !== 'string' || !/^[a-f0-9]{64}$/.test(signature ?? '')) return respond(false);
+    if (!secret || typeof payload !== 'string' || typeof signature !== 'string' ||
+        !/^[a-f0-9]{64}$/.test(signature)) return respond(false);
 
     const expected = Utilities.computeHmacSha256Signature(payload, secret, Utilities.Charset.UTF_8)
       .map(byte => ((byte + 256) % 256).toString(16).padStart(2, '0')).join('');
@@ -32,14 +33,14 @@ function doPost(event) {
     const message = JSON.parse(payload);
     const brief = message.brief;
     const now = Math.floor(Date.now() / 1000);
-    if (!/^[a-f0-9-]{36}$/.test(message.delivery_id ?? '') ||
+    if (!/^[a-f0-9-]{36}$/.test(message.delivery_id || '') ||
         !Number.isSafeInteger(message.issued_at) || Math.abs(now - message.issued_at) > 300 ||
-        brief?.schema_version !== SCHEMA_VERSION || !/^UK-[A-F0-9-]{36}$/.test(brief.tracking_id ?? '')) {
+        !brief || brief.schema_version !== SCHEMA_VERSION || !/^UK-[A-F0-9-]{36}$/.test(brief.tracking_id || '')) {
       return respond(false);
     }
 
     const lock = LockService.getScriptLock();
-    if (!lock.tryLock(10_000)) return respond(false);
+    if (!lock.tryLock(10000)) return respond(false);
     try {
       const deliveryKey = 'sent_' + message.delivery_id;
       if (properties.getProperty(deliveryKey)) return respond(true);
@@ -73,12 +74,12 @@ function doPost(event) {
           'Location: ' + search.location,
           'Priority: ' + search.priority,
           'Target results: ' + search.result_limit,
-          'Reference image: ' + (search.reference_image?.filename ?? 'None'),
+          'Reference image: ' + (search.reference_image ? search.reference_image.filename : 'None'),
           '',
           'CUSTOMER CONTACT',
           'Email: ' + brief.customer.email,
-          'WhatsApp: ' + (brief.customer.whatsapp ?? 'None'),
-          'Telegram: ' + (brief.customer.telegram ?? 'None'),
+          'WhatsApp: ' + (brief.customer.whatsapp == null ? 'None' : brief.customer.whatsapp),
+          'Telegram: ' + (brief.customer.telegram == null ? 'None' : brief.customer.telegram),
           '',
           'For the grounded-search workflow, import search_request from rental-brief.v1.json.'
         ].join('\n'),
@@ -89,7 +90,7 @@ function doPost(event) {
     } finally {
       lock.releaseLock();
     }
-  } catch {
+  } catch (error) {
     return respond(false);
   }
 }
