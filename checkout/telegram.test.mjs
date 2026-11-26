@@ -57,5 +57,21 @@ test('deliver alerts only to the paired private chat and retry a temporary Teleg
   assert.equal(attempts.length, 4);
   assert.ok(attempts.every(attempt => attempt.chat_id === 42 && !attempt.text.includes('UK-HISTORICAL')));
   assert.equal(database.prepare('SELECT COUNT(*) AS count FROM telegram_outbox WHERE delivered_at IS NOT NULL').get().count, 2);
+
+  const trackingId = 'UK-00000000-0000-4000-8000-000000000001';
+  updates = [
+    { update_id: 10, message: { chat: { id: 99, type: 'private' }, text: `/complete ${trackingId}` } },
+    { update_id: 11, message: { chat: { id: 42, type: 'group' }, text: `/complete ${trackingId}` } },
+    { update_id: 12, message: { chat: { id: 42, type: 'private' }, text: `/complete ${trackingId.toLowerCase()}` } }
+  ];
+  const completed = [];
+  const operator = createTelegramAlerts({ ...settings, completeRental: id => {
+    completed.push(id);
+    return 'Rental marked complete. The customer email is queued.';
+  } });
+  await operator.tick();
+  assert.deepEqual(completed, [trackingId]);
+  assert.equal(attempts.length, 5);
+  assert.equal(attempts[4].chat_id, 42);
   database.close();
 });

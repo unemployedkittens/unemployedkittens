@@ -31,60 +31,22 @@ function doPost(event) {
     if (mismatch !== 0) return respond(false);
 
     const message = JSON.parse(payload);
-    const brief = message.brief;
     const now = Math.floor(Date.now() / 1000);
-    if (!/^[a-f0-9-]{36}$/.test(message.delivery_id || '') ||
-        !Number.isSafeInteger(message.issued_at) || Math.abs(now - message.issued_at) > 300 ||
-        !brief || brief.schema_version !== SCHEMA_VERSION || !/^UK-[A-F0-9-]{36}$/.test(brief.tracking_id || '')) {
-      return respond(false);
-    }
+    if (!Number.isSafeInteger(message.issued_at) || Math.abs(now - message.issued_at) > 300) return respond(false);
+    if (message.kind === 'capabilities') return respond(true, { customer_email: true });
+
+    const isCustomer = message.kind === 'customer_confirmation' || message.kind === 'customer_complete';
+    const idPattern = isCustomer ? /^[a-f0-9]{32}$/ : /^[a-f0-9-]{36}$/;
+    if (!idPattern.test(message.delivery_id || '')) return respond(false);
 
     const lock = LockService.getScriptLock();
     if (!lock.tryLock(10000)) return respond(false);
     try {
       const deliveryKey = 'sent_' + message.delivery_id;
       if (properties.getProperty(deliveryKey)) return respond(true);
-
-      const search = brief.search_request;
-      const attachments = [
-        Utilities.newBlob(JSON.stringify(brief, null, 2), 'application/json', 'rental-brief.v1.json')
-      ];
-      if (search.reference_image && message.reference_image) {
-        attachments.push(Utilities.newBlob(
-          Utilities.base64Decode(message.reference_image),
-          search.reference_image.mime_type,
-          search.reference_image.filename
-        ));
-      }
-
-      MailApp.sendEmail({
-        to: OWNER_EMAIL,
-        name: 'Unemployed Kittens',
-        subject: '[Rent a Kitten] Paid rental ' + brief.tracking_id,
-        body: [
-          'RENT A KITTEN',
-          'Tracking ID: ' + brief.tracking_id,
-          'Verified payment: ' + brief.payment.provider + ' at ' + brief.payment.verified_at,
-          '',
-          'SEARCH BRIEF',
-          'Product or service: ' + search.product_or_service,
-          'Requirements: ' + search.requirements,
-          'Quantity: ' + search.quantity,
-          'Maximum budget: ' + search.maximum_budget,
-          'Location: ' + search.location,
-          'Priority: ' + search.priority,
-          'Target results: ' + search.result_limit,
-          'Reference image: ' + (search.reference_image ? search.reference_image.filename : 'None'),
-          '',
-          'CUSTOMER CONTACT',
-          'Email: ' + brief.customer.email,
-          'WhatsApp: ' + (brief.customer.whatsapp == null ? 'None' : brief.customer.whatsapp),
-          'Telegram: ' + (brief.customer.telegram == null ? 'None' : brief.customer.telegram),
-          '',
-          'For the grounded-search workflow, import search_request from rental-brief.v1.json.'
-        ].join('\n'),
-        attachments
-      });
+      const email = isCustomer ? buildCustomerEmail(message) : buildOwnerEmail(message);
+      if (!email) return respond(false);
+      MailApp.sendEmail(email);
       properties.setProperty(deliveryKey, '1');
       return respond(true);
     } finally {
@@ -95,7 +57,75 @@ function doPost(event) {
   }
 }
 
-function respond(accepted) {
-  return ContentService.createTextOutput(JSON.stringify({ accepted }))
+function buildOwnerEmail(message) {
+  const brief = message.brief;
+  if (!brief || brief.schema_version !== SCHEMA_VERSION || !/^UK-[A-F0-9-]{36}$/.test(brief.tracking_id || '')) {
+    return null;
+  }
+  const search = brief.search_request;
+  const attachments = [Utilities.newBlob(JSON.stringify(brief, null, 2), 'application/json', 'rental-brief.v1.json')];
+  if (search.reference_image && message.reference_image) {
+    attachments.push(Utilities.newBlob(
+      Utilities.base64Decode(message.reference_image), search.reference_image.mime_type, search.reference_image.filename
+    ));
+  }
+
+  return {
+    to: OWNER_EMAIL,
+    name: 'Unemployed Kittens',
+    subject: '[Rent a Kitten] Paid rental ' + brief.tracking_id,
+    body: [
+      'RENT A KITTEN',
+      'Tracking ID: ' + brief.tracking_id,
+      'Verified payment: ' + brief.payment.provider + ' at ' + brief.payment.verified_at,
+      '',
+      'SEARCH BRIEF',
+      'Product or service: ' + search.product_or_service,
+      'Requirements: ' + search.requirements,
+      'Quantity: ' + search.quantity,
+      'Maximum budget: ' + search.maximum_budget,
+      'Location: ' + search.location,
+      'Priority: ' + search.priority,
+      'Target results: ' + search.result_limit,
+      'Reference image: ' + (search.reference_image ? search.reference_image.filename : 'None'),
+      '',
+      'CUSTOMER CONTACT',
+      'Email: ' + brief.customer.email,
+      'WhatsApp: ' + (brief.customer.whatsapp == null ? 'None' : brief.customer.whatsapp),
+      'Telegram: ' + (brief.customer.telegram == null ? 'None' : brief.customer.telegram),
+      '',
+      'For the grounded-search workflow, import search_request from rental-brief.v1.json.'
+    ].join('\n'),
+    attachments
+  };
+}
+
+function buildCustomerEmail(message) {
+  if (typeof message.recipient !== 'string' || message.recipient.length > 254 ||
+      !/^[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Z0-9-]+(?:\.[A-Z0-9-]+)+$/i.test(message.recipient) ||
+      !/^UK-[A-F0-9-]{36}$/.test(message.tracking_id || '')) return null;
+
+  const complete = message.kind === 'customer_complete';
+  return {
+    to: message.recipient,
+    replyTo: OWNER_EMAIL,
+    name: 'Unemployed Kittens',
+    subject: '[Rent a Kitten] ' + (complete ? 'Your job is complete' : 'Your rental is confirmed'),
+    body: [
+      'Hello,',
+      '',
+      complete ? 'Your Rent a Kitten job is complete.' : 'We received your payment and research brief. Your rental is confirmed.',
+      'Tracking ID: ' + message.tracking_id,
+      complete ? '' : 'The estimated turnaround is about two weeks.',
+      '',
+      'Reply to this email if you have questions about your rental.',
+      '',
+      'Unemployed Kittens'
+    ].join('\n')
+  };
+}
+
+function respond(accepted, details) {
+  return ContentService.createTextOutput(JSON.stringify(Object.assign({ accepted }, details)))
     .setMimeType(ContentService.MimeType.JSON);
 }

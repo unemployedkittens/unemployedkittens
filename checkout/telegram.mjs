@@ -25,7 +25,7 @@ export function installTelegramOutbox(database) {
   `);
 }
 
-export function createTelegramAlerts({ database, token, pairingCode, request = fetch, log = console }) {
+export function createTelegramAlerts({ database, token, pairingCode, completeRental, request = fetch, log = console }) {
   const botId = token.split(':', 1)[0];
   const getRecipient = database.prepare('SELECT chat_id FROM telegram_recipients WHERE bot_id = ?');
   const saveRecipient = database.prepare('INSERT OR IGNORE INTO telegram_recipients (bot_id, chat_id) VALUES (?, ?)');
@@ -42,7 +42,7 @@ export function createTelegramAlerts({ database, token, pairingCode, request = f
   const delivered = database.prepare('UPDATE telegram_outbox SET delivered_at = ?, lease_until = 0 WHERE request_id = ?');
   const retry = database.prepare('UPDATE telegram_outbox SET next_attempt_at = ?, lease_until = 0 WHERE request_id = ?');
   let updateOffset = 0;
-  let nextPairPollAt = 0;
+  let nextUpdatePollAt = 0;
   let active = false;
 
   async function telegram(method, body) {
@@ -62,16 +62,20 @@ export function createTelegramAlerts({ database, token, pairingCode, request = f
     return data.result;
   }
 
-  async function pairChat(now) {
-    if (!pairingCode || now < nextPairPollAt) return;
-    let updates;
+  async function getUpdates(now) {
+    if (now < nextUpdatePollAt) return [];
     try {
-      updates = await telegram('getUpdates', { offset: updateOffset, timeout: 0, allowed_updates: ['message'] });
+      return await telegram('getUpdates', { offset: updateOffset, timeout: 0, limit: 20, allowed_updates: ['message'] });
     } catch (error) {
-      nextPairPollAt = now + Math.max(Number(error.retryAfter) || 0, 60);
-      log.warn('Telegram pairing is temporarily unavailable.', error.status ?? 'network');
-      return;
+      nextUpdatePollAt = now + Math.max(Number(error.retryAfter) || 0, 60);
+      log.warn('Telegram updates are temporarily unavailable.', error.status ?? 'network');
+      return [];
     }
+  }
+
+  async function pairChat(now) {
+    if (!pairingCode) return;
+    const updates = await getUpdates(now);
     for (const update of updates) {
       updateOffset = update.update_id + 1;
       const message = update.message;
@@ -96,6 +100,27 @@ export function createTelegramAlerts({ database, token, pairingCode, request = f
     }
   }
 
+  async function readCommands(now, chatId) {
+    const updates = await getUpdates(now);
+    for (const update of updates) {
+      const message = update.message;
+      if (message?.chat?.type === 'private' && String(message.chat.id) === chatId) {
+        const command = message.text?.trim().match(/^\/complete(?:@\w+)?(?:\s+(\S+))?$/i);
+        if (command) {
+          const trackingId = command[1]?.toUpperCase() ?? '';
+          const text = /^UK-[A-F0-9-]{36}$/.test(trackingId)
+            ? completeRental(trackingId) : 'Send /complete followed by the rental tracking ID.';
+          try {
+            await telegram('sendMessage', { chat_id: Number(chatId), text });
+          } catch (error) {
+            log.warn('Telegram could not acknowledge the completion command.', error.status ?? 'network');
+          }
+        }
+      }
+      updateOffset = update.update_id + 1;
+    }
+  }
+
   async function tick() {
     if (active) return;
     active = true;
@@ -106,6 +131,8 @@ export function createTelegramAlerts({ database, token, pairingCode, request = f
         await pairChat(now);
         return;
       }
+
+      if (completeRental) await readCommands(now, recipient.chat_id);
 
       const queued = claim.get(now + 60, now, now);
       if (!queued) return;

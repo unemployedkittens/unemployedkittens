@@ -61,11 +61,35 @@ export function buildOwnerBrief(rental) {
   };
 }
 
-export function createOwnerEmailDelivery({ database, url, secret, request = fetch, log = console }) {
+export function createMailBridge({ url, secret, request = fetch }) {
   if (!/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(url) ||
       !/^[a-f0-9]{64}$/i.test(secret)) {
     throw new Error('Invalid Gmail bridge URL or signing secret.');
   }
+
+  return async function send(message) {
+    const payload = JSON.stringify({ ...message, issued_at: Math.floor(Date.now() / 1000) });
+    const signature = createHmac('sha256', secret).update(payload).digest('hex');
+    let response;
+    try {
+      response = await request(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payload, signature }),
+        signal: AbortSignal.timeout(35_000)
+      });
+    } catch {
+      return { failure: 'network request failed' };
+    }
+    if (!response.ok) return { failure: `bridge returned HTTP ${response.status}` };
+    const result = await response.json().catch(() => null);
+    if (!result) return { failure: 'bridge response was not JSON' };
+    if (result.accepted !== true) return { failure: 'bridge did not accept the email request' };
+    return { result };
+  };
+}
+
+export function createOwnerEmailDelivery({ database, send, log = console }) {
   const claim = database.prepare(`
     UPDATE owner_email_outbox SET lease_until = ?, attempts = attempts + 1
     WHERE request_id = (
@@ -84,29 +108,12 @@ export function createOwnerEmailDelivery({ database, url, secret, request = fetc
   let active = false;
 
   async function sendBrief(deliveryId, brief, image = null) {
-    const payload = JSON.stringify({
+    const { failure } = await send({
       delivery_id: deliveryId,
-      issued_at: Math.floor(Date.now() / 1000),
       brief,
       reference_image: image ? Buffer.from(image).toString('base64') : null
     });
-    const signature = createHmac('sha256', secret).update(payload).digest('hex');
-    let response;
-    try {
-      response = await request(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payload, signature }),
-        signal: AbortSignal.timeout(35_000)
-      });
-    } catch {
-      return 'network request failed';
-    }
-    if (!response.ok) return `bridge returned HTTP ${response.status}`;
-    const result = await response.json().catch(() => null);
-    if (!result) return 'bridge response was not JSON';
-    if (result.accepted !== true) return 'bridge did not accept the brief';
-    return null;
+    return failure;
   }
 
   async function sendSample(deliveryId) {

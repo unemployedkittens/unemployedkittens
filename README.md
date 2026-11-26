@@ -22,7 +22,7 @@ The typography uses Google Fonts with local system fallbacks. All kitten images 
 
 ## Stripe checkout
 
-The Node backend in `checkout/` saves rental briefs and optional reference images to a private SQLite database. It creates a one-time S$20 Checkout Session for cards and PayNow with the **UnemployedKittens** display name and confirms the rental only after Stripe sends a signed event for the matching paid session. The paid return page displays the tracking ID. Customer email and the progress page require separate integrations.
+The Node backend in `checkout/` saves rental briefs and optional reference images to a private SQLite database. It creates a one-time S$20 Checkout Session for cards and PayNow with the **UnemployedKittens** display name and confirms the rental only after Stripe sends a signed event for the matching paid session. The paid return page displays the tracking ID.
 
 1. Deploy `checkout/` on a Node 24 HTTPS host with a persistent private volume. Run `npm ci` and `npm start` from that directory. Use `checkout/.env.example` as the environment variable reference. Set `RENTALS_DB_PATH` to a path on the private volume and `SITE_ORIGIN` to the website origin.
 2. In a Stripe sandbox, configure a one-time SGD 20 rental price and a payment method configuration with PayNow enabled. Set `STRIPE_RENTAL_PRICE_ID` and `STRIPE_PAYMENT_METHOD_CONFIGURATION` to their IDs. Store `STRIPE_RESTRICTED_KEY`, with Checkout Sessions write access, in the host's secret store.
@@ -65,3 +65,9 @@ Use `tracking_id` to associate results with the order. Send only `search_request
 ```
 
 The priority values are `value` (balance price and quality), `cheap` (prioritise price), and `quality` (prioritise quality or brand). Quantity, budget, and location retain the customer's wording, including units and currencies.
+
+## Customer emails and job completion
+
+Each newly verified payment queues a confirmation containing the tracking ID. To complete a paid rental, send `/complete <tracking ID>` in the paired private Telegram chat. The backend records completion and queues one customer email, even if the command is repeated. Completion emails wait for an outstanding confirmation for the same rental to be delivered first.
+
+Update the existing Apps Script web app to the latest `checkout/owner-mail-bridge.gs` using **Deploy → Manage deployments → Edit → New version → Deploy**. An update to the existing deployment retains the `/exec` URL and the existing script property. The backend checks for customer email support before sending queued messages. Both messages use the rental's saved email address and are sent from the Google account that owns and executes the Apps Script deployment.

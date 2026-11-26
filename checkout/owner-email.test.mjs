@@ -4,7 +4,8 @@ import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { runInNewContext } from 'node:vm';
-import { createOwnerEmailDelivery, installOwnerEmailOutbox } from './owner-email.mjs';
+import { createMailBridge, createOwnerEmailDelivery, installOwnerEmailOutbox } from './owner-email.mjs';
+import { createCustomerEmailDelivery, createRentalCompletion, installCustomerEmailOutbox } from './customer-email.mjs';
 
 test('structure a verified brief, sign it, and email it once even if the first response is lost', async () => {
   const database = new DatabaseSync(':memory:');
@@ -16,6 +17,7 @@ test('structure a verified brief, sign it, and email it once even if the first r
       )
     `);
     installOwnerEmailOutbox(database);
+    installCustomerEmailOutbox(database);
     const requestId = randomUUID();
     const trackingId = `UK-${randomUUID().toUpperCase()}`;
     const saved = {
@@ -27,6 +29,9 @@ test('structure a verified brief, sign it, and email it once even if the first r
     database.prepare('INSERT INTO rentals VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
       .run(requestId, trackingId, JSON.stringify(saved), 'cs_fixture', 1_700_000_000, 'pending', image, 'image/png');
     assert.equal(database.prepare('SELECT COUNT(*) AS total FROM owner_email_outbox').get().total, 0);
+    const completeRental = createRentalCompletion(database);
+    assert.equal(completeRental(trackingId), 'No paid rental matches that tracking ID.');
+    assert.equal(database.prepare('SELECT COUNT(*) AS total FROM customer_email_outbox').get().total, 0);
     database.exec("UPDATE rentals SET status = 'paid'");
     database.exec("UPDATE rentals SET status = 'paid'");
 
@@ -67,11 +72,13 @@ test('structure a verified brief, sign it, and email it once even if the first r
       if (++deliveries === 1) throw new Error('The response was lost after Google sent the email.');
       return new Response(result, { status: 200 });
     };
-    const worker = createOwnerEmailDelivery({
-      database,
+    const send = createMailBridge({
       url: 'https://script.google.com/macros/s/fixture/exec',
       secret: properties.get('OWNER_MAIL_SECRET'),
-      request,
+      request
+    });
+    const worker = createOwnerEmailDelivery({
+      database, send,
       log: { info() {}, warn() {}, error() {} }
     });
 
@@ -100,6 +107,24 @@ test('structure a verified brief, sign it, and email it once even if the first r
     assert.deepEqual(brief.customer, { email: 'customer@example.com', whatsapp: null, telegram: '@fixture' });
     assert.equal(email.attachments[1].name, 'reference-image.png');
     assert.deepEqual(email.attachments[1].value, image);
+
+    assert.equal(completeRental(trackingId), 'Rental marked complete. The customer email is queued.');
+    assert.equal(completeRental(trackingId), 'This rental is already marked complete.');
+    const customer = createCustomerEmailDelivery({ database, send, log: { info() {}, warn() {}, error() {} } });
+    await customer.tick();
+    await customer.tick();
+    await customer.tick();
+    assert.deepEqual(sent.slice(1).map(item => item.subject), [
+      '[Rent a Kitten] Your rental is confirmed',
+      '[Rent a Kitten] Your job is complete'
+    ]);
+    for (const item of sent.slice(1)) {
+      assert.equal(item.to, 'customer@example.com');
+      assert.equal(item.replyTo, 'unemployedkittens@gmail.com');
+      assert.ok(item.body.includes(trackingId));
+      assert.equal(item.attachments, undefined);
+    }
+    assert.equal(database.prepare('SELECT COUNT(*) AS total FROM customer_email_outbox WHERE delivered_at IS NOT NULL').get().total, 2);
   } finally {
     database.close();
   }

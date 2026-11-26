@@ -7,7 +7,8 @@ import { pathToFileURL } from 'node:url';
 import Stripe from 'stripe';
 import { createSolanaPayments } from './solana.mjs';
 import { createTelegramAlerts, installTelegramOutbox } from './telegram.mjs';
-import { createOwnerEmailDelivery, installOwnerEmailOutbox } from './owner-email.mjs';
+import { createMailBridge, createOwnerEmailDelivery, installOwnerEmailOutbox } from './owner-email.mjs';
+import { createCustomerEmailDelivery, createRentalCompletion, installCustomerEmailOutbox } from './customer-email.mjs';
 
 const rentalFee = 2000;
 const checkoutCurrency = 'sgd';
@@ -142,6 +143,7 @@ export function createRentalServer({ stripe, database, siteOrigin, webhookSecret
   `);
   installTelegramOutbox(database);
   installOwnerEmailOutbox(database);
+  installCustomerEmailOutbox(database);
 
   const insertRental = database.prepare(`
     INSERT INTO rentals (request_id, tracking_id, fingerprint, brief_json, reference_image, reference_image_type, created_at)
@@ -421,11 +423,16 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     });
     server.listen(Number(PORT), () => console.log('Rental checkout server listening.'));
     if (liveMode && /^\d+:[A-Za-z0-9_-]+$/.test(telegramToken ?? '')) {
-      createTelegramAlerts({ database, token: telegramToken, pairingCode: telegramPairingCode }).start();
+      createTelegramAlerts({
+        database, token: telegramToken, pairingCode: telegramPairingCode,
+        completeRental: createRentalCompletion(database)
+      }).start();
     }
     if (liveMode && ownerMailUrl && ownerMailSecret) {
       try {
-        createOwnerEmailDelivery({ database, url: ownerMailUrl, secret: ownerMailSecret }).start(ownerMailSampleId);
+        const send = createMailBridge({ url: ownerMailUrl, secret: ownerMailSecret });
+        createOwnerEmailDelivery({ database, send }).start(ownerMailSampleId);
+        createCustomerEmailDelivery({ database, send }).start();
         console.log('Owner rental email worker enabled.');
       } catch {
         console.warn('Owner rental email configuration is invalid.');
