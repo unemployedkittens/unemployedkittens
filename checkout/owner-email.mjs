@@ -19,6 +19,11 @@ export function installOwnerEmailOutbox(database) {
     CREATE INDEX IF NOT EXISTS owner_email_outbox_pending ON owner_email_outbox (next_attempt_at)
       WHERE delivered_at IS NULL;
 
+    CREATE TABLE IF NOT EXISTS owner_email_samples (
+      delivery_id TEXT PRIMARY KEY,
+      delivered_at INTEGER NOT NULL
+    ) STRICT;
+
     CREATE TRIGGER IF NOT EXISTS owner_email_after_payment
     AFTER UPDATE OF status ON rentals
     WHEN OLD.status <> 'paid' AND NEW.status = 'paid'
@@ -78,6 +83,58 @@ export function createOwnerEmailDelivery({ database, url, secret, request = fetc
   const retry = database.prepare('UPDATE owner_email_outbox SET next_attempt_at = ?, lease_until = 0 WHERE request_id = ?');
   let active = false;
 
+  async function sendBrief(deliveryId, brief, image = null) {
+    const payload = JSON.stringify({
+      delivery_id: deliveryId,
+      issued_at: Math.floor(Date.now() / 1000),
+      brief,
+      reference_image: image ? Buffer.from(image).toString('base64') : null
+    });
+    const signature = createHmac('sha256', secret).update(payload).digest('hex');
+    let response;
+    try {
+      response = await request(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payload, signature }),
+        signal: AbortSignal.timeout(35_000)
+      });
+    } catch {
+      return 'network request failed';
+    }
+    if (!response.ok) return `bridge returned HTTP ${response.status}`;
+    const result = await response.json().catch(() => null);
+    if (!result) return 'bridge response was not JSON';
+    if (result.accepted !== true) return 'bridge did not accept the brief';
+    return null;
+  }
+
+  async function sendSample(deliveryId) {
+    if (!/^[a-f0-9-]{36}$/.test(deliveryId) ||
+        database.prepare('SELECT 1 FROM owner_email_samples WHERE delivery_id = ?').get(deliveryId)) return;
+
+    const now = Math.floor(Date.now() / 1000);
+    const brief = buildOwnerBrief({
+      tracking_id: `UK-${deliveryId.toUpperCase()}`,
+      paid_at: now,
+      brief_json: JSON.stringify({
+        products_services: '[TEST] Brie cheese',
+        specific_detail: 'Sample brief to verify email delivery. No rental or payment was created.',
+        amount: '2 kg', maximum_budget: 'SGD 150 total', location: 'Singapore',
+        priority: 'value', email: 'customer@example.com'
+      })
+    });
+    brief.payment.provider = 'test (no payment)';
+    brief.sample = true;
+    const failure = await sendBrief(deliveryId, brief);
+    if (failure) {
+      log.warn(`Owner rental email sample failed: ${failure}.`);
+      return;
+    }
+    database.prepare('INSERT OR IGNORE INTO owner_email_samples VALUES (?, ?)').run(deliveryId, now);
+    log.info('Owner rental email sample delivered.');
+  }
+
   async function tick() {
     if (active) return;
     active = true;
@@ -88,22 +145,9 @@ export function createOwnerEmailDelivery({ database, url, secret, request = fetc
       try {
         const rental = getRental.get(queued.request_id);
         const brief = buildOwnerBrief(rental);
-        const payload = JSON.stringify({
-          delivery_id: queued.request_id,
-          issued_at: now,
-          brief,
-          reference_image: brief.search_request.reference_image
-            ? Buffer.from(rental.reference_image).toString('base64')
-            : null
-        });
-        const signature = createHmac('sha256', secret).update(payload).digest('hex');
-        const response = await request(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ payload, signature }),
-          signal: AbortSignal.timeout(35_000)
-        });
-        if (!response.ok || (await response.json()).accepted !== true) {
+        const failure = await sendBrief(queued.request_id, brief,
+          brief.search_request.reference_image ? rental.reference_image : null);
+        if (failure) {
           throw new Error('The Gmail bridge did not accept the brief.');
         }
         delivered.run(Math.floor(Date.now() / 1000), queued.request_id);
@@ -122,10 +166,13 @@ export function createOwnerEmailDelivery({ database, url, secret, request = fetc
 
   return {
     tick,
-    start() {
+    start(sampleId) {
       const timer = setInterval(tick, 10_000);
       timer.unref();
       void tick();
+      if (sampleId) {
+        void sendSample(sampleId).catch(() => log.error('Owner rental email sample could not be prepared.'));
+      }
     }
   };
 }

@@ -387,6 +387,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     TELEGRAM_PAIRING_CODE: telegramPairingCode,
     OWNER_MAIL_BRIDGE_URL: ownerMailUrl,
     OWNER_MAIL_SECRET: ownerMailSecret,
+    OWNER_MAIL_SAMPLE_ID: ownerMailSampleId,
     SITE_ORIGIN: configuredOrigin = 'https://unemployedkittens.com',
     RENTALS_DB_PATH: databasePath = './data/rentals.sqlite',
     PORT = 8787
@@ -424,7 +425,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     }
     if (liveMode && ownerMailUrl && ownerMailSecret) {
       try {
-        createOwnerEmailDelivery({ database, url: ownerMailUrl, secret: ownerMailSecret }).start();
+        createOwnerEmailDelivery({ database, url: ownerMailUrl, secret: ownerMailSecret }).start(ownerMailSampleId);
         console.log('Owner rental email worker enabled.');
       } catch {
         console.warn('Owner rental email configuration is invalid.');
