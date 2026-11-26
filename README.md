@@ -22,7 +22,7 @@ The typography uses Google Fonts with local system fallbacks. All kitten images 
 
 ## Stripe checkout
 
-The Node backend in `checkout/` saves rental briefs and optional reference images to a private SQLite database. It creates a one-time S$20 Checkout Session for cards and PayNow with the **UnemployedKittens** display name and confirms the rental only after Stripe sends a signed event for the matching paid session. The paid return page displays the tracking ID. Email and the customer progress page require separate integrations.
+The Node backend in `checkout/` saves rental briefs and optional reference images to a private SQLite database. It creates a one-time S$20 Checkout Session for cards and PayNow with the **UnemployedKittens** display name and confirms the rental only after Stripe sends a signed event for the matching paid session. The paid return page displays the tracking ID. Customer email and the progress page require separate integrations.
 
 1. Deploy `checkout/` on a Node 24 HTTPS host with a persistent private volume. Run `npm ci` and `npm start` from that directory. Use `checkout/.env.example` as the environment variable reference. Set `RENTALS_DB_PATH` to a path on the private volume and `SITE_ORIGIN` to the website origin.
 2. In a Stripe sandbox, configure a one-time SGD 20 rental price and a payment method configuration with PayNow enabled. Set `STRIPE_RENTAL_PRICE_ID` and `STRIPE_PAYMENT_METHOD_CONFIGURATION` to their IDs. Store `STRIPE_RESTRICTED_KEY`, with Checkout Sessions write access, in the host's secret store.
@@ -38,3 +38,30 @@ Set `SOLANA_RECEIVING_ADDRESS` to the merchant's public Solana wallet address. T
 ## Telegram rental alerts
 
 Set `TELEGRAM_BOT_TOKEN` and a random `TELEGRAM_PAIRING_CODE` in the host's secret store. In a private chat with the bot, send `/start` followed by the pairing code. A confirmation message indicates the chat has been saved. The backend queues an alert when a Stripe or Solana rental transitions to paid and retries temporary delivery failures. Alerts include the tracking ID and payment provider. The queue and paired chat are stored in the private SQLite database so they survive deploys.
+
+## Owner brief email
+
+The backend queues an email to `unemployedkittens@gmail.com` when a rental transitions to paid. It uses an authenticated Google Apps Script web app for delivery. The email subject starts with `[Rent a Kitten] Paid rental` and includes the tracking ID. The email has a readable brief, a machine-readable `rental-brief.v1.json` attachment, and the reference image if one was provided.
+
+1. Sign in to [Google Apps Script](https://script.google.com/home) as `unemployedkittens@gmail.com`. Create a project and paste the contents of `checkout/owner-mail-bridge.gs` into `Code.gs`. Save it, then run `initializeOwnerMail` and grant the mail permission.
+2. Choose **Deploy → New deployment → Web app**. Use **Execute as Me** and **Who has access: Anyone**. The bridge checks a signature before it can send email. Copy the deployed URL ending in `/exec` into the Railway service as `OWNER_MAIL_BRIDGE_URL`.
+3. In Apps Script, open **Project Settings → Script properties**, copy the generated `OWNER_MAIL_SECRET` directly to the Railway service under the same name, and seal it. Apply the Railway variables. New paid rentals remain queued until delivery is available.
+
+### Brief format for grounded search
+
+Use `tracking_id` to associate results with the order. Send only `search_request` to the search workflow. Contact details are in a separate `customer` object. The field `reference_image` is null when there is no upload, otherwise it identifies the accompanying attachment by filename and MIME type.
+
+```json
+{
+  "product_or_service": "Brie cheese",
+  "requirements": "Origin must be Australia",
+  "quantity": "2 kg",
+  "maximum_budget": "SGD 150 total",
+  "location": "Pasir Ris, Singapore",
+  "priority": "value",
+  "result_limit": 30,
+  "reference_image": null
+}
+```
+
+The priority values are `value` (balance price and quality), `cheap` (prioritise price), and `quality` (prioritise quality or brand). Quantity, budget, and location retain the customer's wording, including units and currencies.

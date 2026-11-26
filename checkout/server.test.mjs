@@ -101,6 +101,7 @@ test('stores the brief before checkout and confirms it only after an authenticat
   assert.equal((await webhook('checkout.session.completed', { metadata: { service: 'rent_a_kitten' } })).status, 200);
   assert.deepEqual(await (await fetch(statusUrl)).json(), { status: 'pending' });
   assert.equal(database.prepare('SELECT COUNT(*) AS count FROM telegram_outbox').get().count, 0);
+  assert.equal(database.prepare('SELECT COUNT(*) AS count FROM owner_email_outbox').get().count, 0);
   assert.equal((await webhook('checkout.session.completed')).status, 200);
 
   const paid = await (await fetch(statusUrl)).json();
@@ -109,6 +110,7 @@ test('stores the brief before checkout and confirms it only after an authenticat
   assert.equal((await webhook('checkout.session.async_payment_succeeded')).status, 200);
   assert.equal((await webhook('checkout.session.expired')).status, 200);
   assert.equal(database.prepare('SELECT COUNT(*) AS count FROM telegram_outbox').get().count, 1);
+  assert.equal(database.prepare('SELECT COUNT(*) AS count FROM owner_email_outbox').get().count, 1);
   assert.deepEqual(await (await fetch(statusUrl)).json(), paid);
   assert.equal((await submit(brief)).status, 409);
 

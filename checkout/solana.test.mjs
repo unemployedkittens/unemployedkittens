@@ -100,6 +100,7 @@ test('honours a saved USDC quote and accepts one finalised transfer to the right
   assert.match(paid.trackingId, /^UK-[A-F0-9-]{36}$/);
   assert.deepEqual(await (await fetch(`${api}/solana?request_id=${id}`)).json(), paid);
   assert.deepEqual(database.prepare('SELECT request_id FROM telegram_outbox').all().map(row => row.request_id), [id]);
+  assert.deepEqual(database.prepare('SELECT request_id FROM owner_email_outbox').all().map(row => row.request_id), [id]);
 
   const otherId = randomUUID();
   const other = await (await create(otherId)).json();

@@ -7,6 +7,7 @@ import { pathToFileURL } from 'node:url';
 import Stripe from 'stripe';
 import { createSolanaPayments } from './solana.mjs';
 import { createTelegramAlerts, installTelegramOutbox } from './telegram.mjs';
+import { createOwnerEmailDelivery, installOwnerEmailOutbox } from './owner-email.mjs';
 
 const rentalFee = 2000;
 const checkoutCurrency = 'sgd';
@@ -140,6 +141,7 @@ export function createRentalServer({ stripe, database, siteOrigin, webhookSecret
     ) STRICT;
   `);
   installTelegramOutbox(database);
+  installOwnerEmailOutbox(database);
 
   const insertRental = database.prepare(`
     INSERT INTO rentals (request_id, tracking_id, fingerprint, brief_json, reference_image, reference_image_type, created_at)
@@ -383,6 +385,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     SOLANA_RPC_URL: solanaRpcUrl,
     TELEGRAM_BOT_TOKEN: telegramToken,
     TELEGRAM_PAIRING_CODE: telegramPairingCode,
+    OWNER_MAIL_BRIDGE_URL: ownerMailUrl,
+    OWNER_MAIL_SECRET: ownerMailSecret,
     SITE_ORIGIN: configuredOrigin = 'https://unemployedkittens.com',
     RENTALS_DB_PATH: databasePath = './data/rentals.sqlite',
     PORT = 8787
@@ -417,6 +421,14 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     server.listen(Number(PORT), () => console.log('Rental checkout server listening.'));
     if (liveMode && /^\d+:[A-Za-z0-9_-]+$/.test(telegramToken ?? '')) {
       createTelegramAlerts({ database, token: telegramToken, pairingCode: telegramPairingCode }).start();
+    }
+    if (liveMode && ownerMailUrl && ownerMailSecret) {
+      try {
+        createOwnerEmailDelivery({ database, url: ownerMailUrl, secret: ownerMailSecret }).start();
+        console.log('Owner rental email worker enabled.');
+      } catch {
+        console.warn('Owner rental email configuration is invalid.');
+      }
     }
   }
 }
