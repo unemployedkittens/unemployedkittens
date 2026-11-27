@@ -1,0 +1,366 @@
+.progress-nav .nav-contact {
+  display: inline-flex;
+  align-items: center;
+}
+
+.progress-page {
+  max-width: 1160px;
+  padding: 36px 0 80px;
+}
+
+.progress-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, .85fr);
+  align-items: end;
+  gap: clamp(24px, 5vw, 70px);
+  padding-bottom: 42px;
+  border-bottom: 1px solid var(--line);
+}
+
+.progress-intro h1 {
+  margin-bottom: 14px;
+  font-size: clamp(48px, 7vw, 84px);
+}
+
+.progress-intro p,
+.jobs-heading p,
+#jobs-message,
+.job-milestone {
+  color: var(--muted);
+}
+
+.progress-intro p,
+.jobs-heading p,
+#jobs-message {
+  margin: 0;
+}
+
+.job-lookup {
+  background: #172219;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: clamp(16px, 3vw, 24px);
+}
+
+.job-lookup label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.lookup-control {
+  display: flex;
+  gap: 8px;
+}
+
+.lookup-control input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid #546457;
+  border-radius: 5px;
+  background: var(--bg);
+  color: var(--ink);
+  padding: 8px 10px;
+  font: inherit;
+}
+
+.lookup-control input:focus-visible {
+  outline: 2px solid var(--lime);
+  outline-offset: 2px;
+}
+
+.job-lookup p {
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+#lookup-message:empty,
+#jobs-message:empty {
+  display: none;
+}
+
+.jobs-section {
+  padding-top: 34px;
+}
+
+.jobs-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 7px 18px;
+  margin-bottom: 18px;
+}
+
+.jobs-heading h2 {
+  margin: 0;
+  font-size: clamp(28px, 4vw, 38px);
+}
+
+.jobs-heading p,
+#jobs-message {
+  font-size: 14px;
+}
+
+.job-list {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  padding: 0;
+  margin: 0;
+}
+
+.job-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 116px;
+  height: 100%;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: #172219;
+  cursor: pointer;
+  text-align: left;
+}
+
+.job-card:hover {
+  border-color: var(--lime);
+}
+
+.job-card-heading,
+.dialog-job-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+}
+
+.job-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .4px;
+}
+
+.job-percentage {
+  color: var(--lime);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.job-card-stage {
+  font-size: 14px;
+  margin: 4px 0 12px;
+}
+
+progress {
+  display: block;
+  width: 100%;
+  height: 7px;
+  border: none;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #344837;
+  color: var(--lime);
+  accent-color: var(--lime);
+}
+
+progress::-webkit-progress-bar {
+  background: #344837;
+}
+
+progress::-webkit-progress-value {
+  background: var(--lime);
+}
+
+progress::-moz-progress-bar {
+  background: var(--lime);
+}
+
+.job-card progress {
+  margin-top: auto;
+}
+
+.progress-page .button {
+  border: 0;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.progress-page .button:hover {
+  transform: none;
+}
+
+.progress-page .button:disabled {
+  opacity: .6;
+  cursor: default;
+}
+
+#more-jobs[hidden] {
+  display: none;
+}
+
+#more-jobs {
+  margin-top: 20px;
+}
+
+.job-dialog {
+  width: min(550px, calc(100% - 28px));
+  max-height: calc(100% - 28px);
+  padding: 36px 24px 24px;
+}
+
+.job-dialog .close {
+  top: 0;
+}
+
+.job-animation {
+  position: relative;
+  overflow: hidden;
+  height: clamp(155px, 48vw, 210px);
+  border-radius: 7px;
+  background: #172219;
+  isolation: isolate;
+}
+
+.job-animation img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 44%;
+}
+
+.monitor-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 77% 60%, #9cfa5570 0%, #84f85920 22%, transparent 52%);
+  mix-blend-mode: screen;
+  opacity: .3;
+}
+
+.job-dialog[open] .job-animation img {
+  animation: desk-camera 7s ease-in-out infinite;
+}
+
+.job-dialog[open] .monitor-glow {
+  animation: desk-light 3.5s ease-in-out infinite;
+}
+
+.job-dialog[open] .job-animation.paused img,
+.job-dialog[open] .job-animation.paused .monitor-glow {
+  animation-play-state: paused;
+}
+
+.animation-toggle {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  color: var(--ink);
+  background: #101914e8;
+  border: 1px solid #546457;
+  border-radius: 5px;
+  padding: 4px 7px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+@keyframes desk-camera {
+  0%, 100% { transform: scale(1.03) translateX(0); }
+  50% { transform: scale(1.09) translateX(-1.2%); }
+}
+
+@keyframes desk-light {
+  0%, 100% { opacity: .18; }
+  55% { opacity: .78; }
+}
+
+.dialog-job-heading {
+  margin: 17px 0 10px;
+}
+
+.dialog-job-heading p {
+  margin-bottom: 4px;
+}
+
+.dialog-job-heading h2 {
+  margin: 0;
+  font-size: clamp(21px, 5vw, 30px);
+}
+
+.dialog-job-heading .job-percentage {
+  font-size: clamp(22px, 5vw, 34px);
+}
+
+.job-milestone {
+  margin: 7px 0 12px;
+  font-size: 13px;
+}
+
+.job-stages {
+  margin: 15px 0 0;
+  padding-inline-start: 22px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.job-stages li {
+  padding: 3px 0 3px 5px;
+}
+
+.job-stages li[aria-current="step"] {
+  font-weight: 700;
+  color: var(--lime);
+}
+
+.job-stages li.is-complete {
+  color: var(--ink);
+}
+
+@media (max-width: 820px) {
+  .progress-intro {
+    grid-template-columns: 1fr;
+  }
+
+  .job-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .progress-page {
+    padding-block: 16px 48px;
+  }
+
+  .progress-intro h1 {
+    letter-spacing: -2.5px;
+  }
+
+  .progress-intro {
+    padding-bottom: 28px;
+  }
+
+  .job-list {
+    grid-template-columns: 1fr;
+  }
+
+  .lookup-control {
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .job-dialog[open] .job-animation img,
+  .job-dialog[open] .monitor-glow {
+    animation: none;
+  }
+
+  .animation-toggle {
+    display: none;
+  }
+}

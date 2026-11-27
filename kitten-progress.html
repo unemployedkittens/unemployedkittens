@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101914">
+  <meta name="referrer" content="no-referrer">
+  <meta name="rental-checkout-api" content="https://rent-a-kitten-api-production.up.railway.app">
+  <meta name="description" content="Find your paid Rent a Kitten job by tracking ID and see its current progress.">
+  <title>Kitten Progress | Unemployed Kittens</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css?v=consultation-dialog">
+  <link rel="stylesheet" href="progress.css">
+  <script src="progress.js" defer></script>
+</head>
+<body>
+  <header class="nav wrap progress-nav">
+    <a class="brand" href="./" aria-label="Unemployed Kittens home"><img src="assets/favicon.svg" alt="" width="38" height="38"><span>unemployed<br>kittens</span></a>
+    <nav aria-label="Main navigation">
+      <a class="nav-contact" href="rent-a-kitten.html">Rent a Kitten <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+  <main class="wrap progress-page">
+    <section class="progress-intro" aria-labelledby="page-title">
+      <div>
+        <h1 id="page-title">Kitten <em>Progress</em></h1>
+        <p>Find your rental by tracking ID and see what your kitten is working on.</p>
+      </div>
+      <form id="job-lookup" class="job-lookup" method="post">
+        <label for="tracking-input">Tracking ID</label>
+        <div class="lookup-control">
+          <input id="tracking-input" name="tracking_id" type="text" maxlength="60" placeholder="UK-…" autocomplete="off" spellcheck="false" required aria-describedby="tracking-help">
+          <button type="submit" class="button" disabled>Find my job</button>
+        </div>
+        <p id="tracking-help">Use the full ID from your payment confirmation.</p>
+        <p id="lookup-message" role="status"></p>
+        <noscript><p>Enable JavaScript to look up a job.</p></noscript>
+      </form>
+    </section>
+
+    <section class="jobs-section" aria-labelledby="job-list-title">
+      <div class="jobs-heading">
+        <h2 id="job-list-title">Paid jobs</h2>
+        <p>Customer details and tracking IDs are private.</p>
+      </div>
+      <p id="jobs-message" role="status">Loading jobs…</p>
+      <ul id="job-list" class="job-list"></ul>
+      <button id="more-jobs" class="button" type="button" hidden>Show more jobs</button>
+      <noscript><p>Enable JavaScript to view the current list.</p></noscript>
+    </section>
+  </main>
+  <footer class="wrap">
+    <a class="footer-brand" href="./">unemployed kittens<span aria-hidden="true">✳</span></a>
+    <div><span>© 2026 Unemployed Kittens</span><a href="./">Back to homepage</a></div>
+  </footer>
+
+  <template id="job-template">
+    <li>
+      <button class="job-card" type="button" aria-haspopup="dialog">
+        <span class="job-card-heading"><span class="job-label"></span><span class="job-percentage"></span></span>
+        <span class="job-card-stage"></span>
+        <progress max="100" value="0" aria-hidden="true"></progress>
+      </button>
+    </li>
+  </template>
+
+  <dialog id="job-dialog" class="job-dialog" aria-labelledby="job-dialog-title">
+    <button type="button" class="close" aria-label="Close job progress">×</button>
+    <div class="job-animation" id="job-animation">
+      <img src="assets/kitten-progress-research.webp" alt="A green alien kitten taps the controls at a glowing research desk." width="1000" height="667" loading="lazy">
+      <div class="monitor-glow" aria-hidden="true"></div>
+      <button type="button" id="toggle-animation" class="animation-toggle" aria-pressed="false">Pause animation</button>
+    </div>
+    <div class="dialog-job-heading">
+      <div>
+        <p id="job-reference" class="job-label"></p>
+        <h2 id="job-dialog-title">Job progress</h2>
+      </div>
+      <span class="job-percentage" id="job-percent"></span>
+    </div>
+    <progress id="job-meter" max="100" value="0" aria-label="Job completion"></progress>
+    <p id="job-milestone" class="job-milestone"></p>
+    <ol id="job-stages" class="job-stages">
+      <li>Payment confirmed</li>
+      <li>Grounded AI search complete</li>
+      <li>Negotiation</li>
+      <li>Tidying the data</li>
+      <li>Job complete</li>
+    </ol>
+  </dialog>
+</body>
+</html>

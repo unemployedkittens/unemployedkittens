@@ -71,3 +71,19 @@ The priority values are `value` (balance price and quality), `cheap` (prioritise
 Each newly verified payment queues a confirmation containing the tracking ID. To complete a paid rental, send `/complete <tracking ID>` in the paired private Telegram chat. The backend records completion and queues one customer email, even if the command is repeated. Completion emails wait for an outstanding confirmation for the same rental to be delivered first.
 
 Update the existing Apps Script web app to the latest `checkout/owner-mail-bridge.gs` using **Deploy → Manage deployments → Edit → New version → Deploy**. An update to the existing deployment retains the `/exec` URL and the existing script property. The backend checks for customer email support before sending queued messages. Both messages use the rental's saved email address and are sent from the Google account that owns and executes the Apps Script deployment.
+
+## Kitten Progress
+
+The public tracker lists each paid job by an anonymous reference and its current stage. Full tracking IDs, customer details, and the briefs stay out of the list. Customers can use the full tracking ID from their confirmation email to find their job.
+
+Send these commands in the paired private Telegram chat, replacing `<tracking ID>` with the full ID from the rental alert:
+
+| Progress | When to update | Command |
+| --- | --- | --- |
+| 20% | Payment confirmed | Automatic for verified payments |
+| 40% | Grounded search complete | `/progress <tracking ID> search` |
+| 50%, 60%, 70% | Negotiation with 10, 20, or 30 businesses | `/progress <tracking ID> 10`, `20`, or `30` |
+| 85% | Start tidying and formatting the results | `/progress <tracking ID> tidying` |
+| 100% | Results sent to the customer | `/complete <tracking ID>` |
+
+Send the finished results to the customer's email before using `/complete`. The command records completion and sends the existing completion notification. The search and negotiation workflows can be run separately, with the Telegram commands recording their milestones.

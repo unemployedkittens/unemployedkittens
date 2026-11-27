@@ -58,12 +58,18 @@
 }
 
 .progress-button {
+  display: inline-block;
   border: 1px solid var(--line);
   border-radius: 5px;
   background: #172219;
   color: var(--muted);
   padding: 8px 13px;
   font-size: 12px;
+}
+
+.progress-button:hover {
+  border-color: var(--lime);
+  color: var(--ink);
 }
 
 .rental-layout {
