@@ -1,0 +1,54 @@
+name: Verify live kitten progress
+on:
+  push:
+    branches: [verify-kitten-progress]
+permissions: {}
+jobs:
+  progress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check public list and private lookup
+        run: |
+          python3 - <<'PY'
+          import json
+          import re
+          import time
+          from urllib.error import HTTPError
+          from urllib.parse import urlencode
+          from urllib.request import Request, urlopen
+
+          api = 'https://rent-a-kitten-api-production.up.railway.app/api/rentals/progress'
+          site = 'https://unemployedkittens.com'
+          for _ in range(16):
+              try:
+                  with urlopen(Request(api, headers={'Origin': site}), timeout=8) as response:
+                      data = json.load(response)
+                      assert response.headers.get('Access-Control-Allow-Origin') == site
+                      break
+              except HTTPError as error:
+                  if error.code not in (404, 502, 503):
+                      raise
+                  time.sleep(5)
+          else:
+              raise AssertionError('Progress list route did not come online.')
+
+          assert set(data) == {'jobs', 'nextPage'}
+          for job in data['jobs']:
+              assert set(job) <= {'job', 'name', 'percent', 'stage', 'negotiated'}
+              assert re.fullmatch('[A-F0-9]{10}', job['job'])
+              assert job['percent'] in (20, 40, 50, 60, 70, 85, 100)
+          print('Public list responds and exposes anonymous progress only.')
+
+          for tracking_id, expected in [('invalid', 400), ('UK-00000000-0000-4000-8000-000000000001', 404)]:
+              request = Request(api + '/lookup', data=urlencode({'tracking_id': tracking_id}).encode(),
+                                headers={'Origin': site, 'Content-Type': 'application/x-www-form-urlencoded'})
+              try:
+                  urlopen(request, timeout=10)
+              except HTTPError as error:
+                  assert error.code == expected
+                  assert error.headers.get('Access-Control-Allow-Origin') == site
+              else:
+                  raise AssertionError('An invalid or unknown tracking ID was accepted.')
+          print('Lookup correctly handles invalid and unknown tracking IDs.')
+          PY
