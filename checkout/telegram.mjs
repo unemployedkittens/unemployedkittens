@@ -25,7 +25,7 @@ export function installTelegramOutbox(database) {
   `);
 }
 
-export function createTelegramAlerts({ database, token, pairingCode, completeRental, request = fetch, log = console }) {
+export function createTelegramAlerts({ database, token, pairingCode, completeRental, updateProgress, request = fetch, log = console }) {
   const botId = token.split(':', 1)[0];
   const getRecipient = database.prepare('SELECT chat_id FROM telegram_recipients WHERE bot_id = ?');
   const saveRecipient = database.prepare('INSERT OR IGNORE INTO telegram_recipients (bot_id, chat_id) VALUES (?, ?)');
@@ -105,15 +105,22 @@ export function createTelegramAlerts({ database, token, pairingCode, completeRen
     for (const update of updates) {
       const message = update.message;
       if (message?.chat?.type === 'private' && String(message.chat.id) === chatId) {
-        const command = message.text?.trim().match(/^\/complete(?:@\w+)?(?:\s+(\S+))?$/i);
+        const command = message.text?.trim().match(/^\/(complete|progress)(?:@\w+)?(?:\s+(\S+))?(?:\s+(\S+))?$/i);
         if (command) {
-          const trackingId = command[1]?.toUpperCase() ?? '';
-          const text = /^UK-[A-F0-9-]{36}$/.test(trackingId)
-            ? completeRental(trackingId) : 'Send /complete followed by the rental tracking ID.';
+          const action = command[1].toLowerCase();
+          const trackingId = command[2]?.toUpperCase() ?? '';
+          const stage = command[3]?.toLowerCase();
+          const validTrackingId = /^UK-[A-F0-9]{8}(?:-[A-F0-9]{4}){3}-[A-F0-9]{12}$/.test(trackingId);
+          let text;
+          if (action === 'complete' && completeRental) {
+            text = validTrackingId && !stage ? completeRental(trackingId) : 'Send /complete followed by the rental tracking ID.';
+          } else if (action === 'progress' && updateProgress) {
+            text = validTrackingId ? updateProgress(trackingId, stage) : 'Send /progress followed by the tracking ID and search, 10, 20, 30, or tidying.';
+          }
           try {
-            await telegram('sendMessage', { chat_id: Number(chatId), text });
+            if (text) await telegram('sendMessage', { chat_id: Number(chatId), text });
           } catch (error) {
-            log.warn('Telegram could not acknowledge the completion command.', error.status ?? 'network');
+            log.warn('Telegram could not acknowledge the rental command.', error.status ?? 'network');
           }
         }
       }
@@ -132,7 +139,7 @@ export function createTelegramAlerts({ database, token, pairingCode, completeRen
         return;
       }
 
-      if (completeRental) await readCommands(now, recipient.chat_id);
+      if (completeRental || updateProgress) await readCommands(now, recipient.chat_id);
 
       const queued = claim.get(now + 60, now, now);
       if (!queued) return;

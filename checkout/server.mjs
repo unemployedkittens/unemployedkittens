@@ -9,6 +9,7 @@ import { createSolanaPayments } from './solana.mjs';
 import { createTelegramAlerts, installTelegramOutbox } from './telegram.mjs';
 import { createMailBridge, createOwnerEmailDelivery, installOwnerEmailOutbox } from './owner-email.mjs';
 import { createCustomerEmailDelivery, createRentalCompletion, installCustomerEmailOutbox } from './customer-email.mjs';
+import { createRentalProgress } from './progress.mjs';
 
 const rentalFee = 2000;
 const checkoutCurrency = 'sgd';
@@ -144,6 +145,7 @@ export function createRentalServer({ stripe, database, siteOrigin, webhookSecret
   installTelegramOutbox(database);
   installOwnerEmailOutbox(database);
   installCustomerEmailOutbox(database);
+  const progress = createRentalProgress(database);
 
   const insertRental = database.prepare(`
     INSERT INTO rentals (request_id, tracking_id, fingerprint, brief_json, reference_image, reference_image_type, created_at)
@@ -338,6 +340,23 @@ export function createRentalServer({ stripe, database, siteOrigin, webhookSecret
       if (origin === siteOrigin) {
         response.setHeader('Access-Control-Allow-Origin', origin);
       }
+      if (route.pathname === '/api/rentals/progress' && request.method === 'GET') {
+        const page = Number(route.searchParams.get('page') ?? '1');
+        if (!Number.isSafeInteger(page) || page < 1 || page > 100000) {
+          throw new RequestError(400, 'Invalid progress list page.');
+        }
+        return json(response, 200, progress.list(page));
+      }
+      if (route.pathname === '/api/rentals/progress/lookup' && request.method === 'POST' && origin === siteOrigin) {
+        const params = new URLSearchParams((await readBody(request, 512)).toString());
+        const trackingId = params.get('tracking_id')?.trim().toUpperCase() ?? '';
+        if (!/^UK-[A-F0-9]{8}(?:-[A-F0-9]{4}){3}-[A-F0-9]{12}$/.test(trackingId)) {
+          throw new RequestError(400, 'Enter the full tracking ID from your confirmation email.');
+        }
+        const job = progress.lookup(trackingId);
+        if (!job) throw new RequestError(404, 'No paid job matches that tracking ID.');
+        return json(response, 200, job);
+      }
       if (route.pathname === '/api/rentals' && request.method === 'POST' && origin === siteOrigin) {
         return await startCheckout(request, response);
       }
@@ -425,7 +444,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     if (liveMode && /^\d+:[A-Za-z0-9_-]+$/.test(telegramToken ?? '')) {
       createTelegramAlerts({
         database, token: telegramToken, pairingCode: telegramPairingCode,
-        completeRental: createRentalCompletion(database)
+        completeRental: createRentalCompletion(database),
+        updateProgress: createRentalProgress(database).update
       }).start();
     }
     if (liveMode && ownerMailUrl && ownerMailSecret) {

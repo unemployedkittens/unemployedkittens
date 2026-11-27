@@ -73,5 +73,20 @@ test('deliver alerts only to the paired private chat and retry a temporary Teleg
   assert.deepEqual(completed, [trackingId]);
   assert.equal(attempts.length, 5);
   assert.equal(attempts[4].chat_id, 42);
+
+  updates = [
+    { update_id: 13, message: { chat: { id: 99, type: 'private' }, text: `/progress ${trackingId} 20` } },
+    { update_id: 14, message: { chat: { id: 42, type: 'group' }, text: `/progress ${trackingId} 20` } },
+    { update_id: 15, message: { chat: { id: 42, type: 'private' }, text: `/progress ${trackingId} 20` } }
+  ];
+  const progress = [];
+  const tracker = createTelegramAlerts({ ...settings, updateProgress: (id, step) => {
+    progress.push([id, step]);
+    return 'Progress updated to 60%. Negotiation.';
+  } });
+  await tracker.tick();
+  assert.deepEqual(progress, [[trackingId, '20']]);
+  assert.equal(attempts.length, 6);
+  assert.equal(attempts[5].chat_id, 42);
   database.close();
 });

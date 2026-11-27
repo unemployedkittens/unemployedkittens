@@ -95,6 +95,7 @@ test('stores the brief before checkout and confirms it only after an authenticat
   assert.equal(sessionsCreated, 1);
   assert.equal((await submit({ ...brief, amount: '3 kg' })).status, 409);
   assert.deepEqual(await (await fetch(statusUrl)).json(), { status: 'pending' });
+  assert.deepEqual(await (await fetch(`${api}/api/rentals/progress`)).json(), { jobs: [], nextPage: null });
   assert.equal((await webhook('checkout.session.completed', {}, false)).status, 400);
   assert.equal((await webhook('checkout.session.completed', { payment_status: 'unpaid' })).status, 200);
   assert.equal((await webhook('checkout.session.completed', { amount_total: 100 })).status, 200);
@@ -107,6 +108,16 @@ test('stores the brief before checkout and confirms it only after an authenticat
   const paid = await (await fetch(statusUrl)).json();
   assert.equal(paid.status, 'paid');
   assert.match(paid.trackingId, /^UK-[A-F0-9-]{36}$/);
+  const listing = await (await fetch(`${api}/api/rentals/progress`)).json();
+  assert.deepEqual(listing.jobs[0], { job: listing.jobs[0].job, name: 'Payment confirmed', percent: 20, stage: 1 });
+  assert.match(listing.jobs[0].job, /^[A-F0-9]{10}$/);
+  const lookupUrl = `${api}/api/rentals/progress/lookup`;
+  const lookup = await fetch(lookupUrl, {
+    method: 'POST', headers: { Origin: siteOrigin },
+    body: new URLSearchParams({ tracking_id: paid.trackingId.toLowerCase() })
+  });
+  assert.deepEqual(await lookup.json(), listing.jobs[0]);
+  assert.equal((await fetch(`${api}/api/rentals/progress?page=-1`)).status, 400);
   assert.equal((await webhook('checkout.session.async_payment_succeeded')).status, 200);
   assert.equal((await webhook('checkout.session.expired')).status, 200);
   assert.equal(database.prepare('SELECT COUNT(*) AS count FROM telegram_outbox').get().count, 1);
