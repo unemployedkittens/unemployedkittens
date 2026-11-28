@@ -10,8 +10,8 @@
   <title>Kitten Progress | Unemployed Kittens</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css?v=consultation-dialog">
-  <link rel="stylesheet" href="progress.css">
-  <script src="progress.js" defer></script>
+  <link rel="stylesheet" href="progress.css?v=sample-job">
+  <script src="progress.js?v=sample-job" defer></script>
 </head>
 <body>
   <header class="nav wrap progress-nav">
@@ -45,6 +45,7 @@
       </div>
       <p id="jobs-message" role="status">Loading jobs…</p>
       <ul id="job-list" class="job-list"></ul>
+      <ul id="sample-job-list" class="job-list" aria-label="Sample job" hidden></ul>
       <button id="more-jobs" class="button" type="button" hidden>Show more jobs</button>
       <noscript><p>Enable JavaScript to view the current list.</p></noscript>
     </section>

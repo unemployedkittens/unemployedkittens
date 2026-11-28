@@ -5,12 +5,17 @@ const lookupButton = lookup.querySelector('button');
 const lookupMessage = document.querySelector('#lookup-message');
 const jobsMessage = document.querySelector('#jobs-message');
 const jobList = document.querySelector('#job-list');
+const sampleJobList = document.querySelector('#sample-job-list');
 const moreJobs = document.querySelector('#more-jobs');
 const cardTemplate = document.querySelector('#job-template');
 const dialog = document.querySelector('#job-dialog');
 const animation = document.querySelector('#job-animation');
 const toggleAnimation = document.querySelector('#toggle-animation');
 let nextPage = 1;
+
+function jobLabel(job) {
+  return job.sample ? 'Sample pending task' : `Job ${job.job}`;
+}
 
 async function fetchJson(url, options = {}) {
   const response = await fetch(url, { ...options, signal: AbortSignal.timeout(12_000) });
@@ -24,7 +29,7 @@ function describeStage(job) {
 }
 
 function openJob(job) {
-  document.querySelector('#job-reference').textContent = `Job ${job.job}`;
+  document.querySelector('#job-reference').textContent = jobLabel(job);
   document.querySelector('#job-percent').textContent = `${job.percent}%`;
   document.querySelector('#job-meter').value = job.percent;
   document.querySelector('#job-milestone').textContent = describeStage(job);
@@ -40,14 +45,14 @@ function openJob(job) {
   dialog.showModal();
 }
 
-function addJob(job) {
+function makeJobCard(job) {
   const card = cardTemplate.content.cloneNode(true);
-  card.querySelector('.job-label').textContent = `Job ${job.job}`;
+  card.querySelector('.job-label').textContent = jobLabel(job);
   card.querySelector('.job-percentage').textContent = `${job.percent}%`;
   card.querySelector('.job-card-stage').textContent = describeStage(job);
   card.querySelector('progress').value = job.percent;
   card.querySelector('button').addEventListener('click', () => openJob(job));
-  jobList.append(card);
+  return card;
 }
 
 async function loadJobs() {
@@ -56,10 +61,12 @@ async function loadJobs() {
     const url = new URL(progressApi);
     url.searchParams.set('page', nextPage);
     const result = await fetchJson(url);
-    result.jobs.forEach(addJob);
+    jobList.append(...result.jobs.map(makeJobCard));
     nextPage = result.nextPage;
     moreJobs.hidden = !nextPage;
-    jobsMessage.textContent = jobList.children.length ? '' : 'No paid jobs yet.';
+    const empty = jobList.children.length === 0;
+    sampleJobList.hidden = !empty;
+    jobsMessage.textContent = empty ? 'No paid jobs yet.' : '';
   } catch {
     jobsMessage.textContent = 'Jobs are temporarily unavailable. Try again in a moment.';
     moreJobs.textContent = 'Try again';
@@ -98,4 +105,5 @@ toggleAnimation.addEventListener('click', () => {
   toggleAnimation.textContent = paused ? 'Play animation' : 'Pause animation';
   toggleAnimation.setAttribute('aria-pressed', String(paused));
 });
+sampleJobList.append(makeJobCard({ sample: true, name: 'Negotiation', percent: 50, stage: 3, negotiated: 10 }));
 loadJobs();

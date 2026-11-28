@@ -112,6 +112,14 @@
   margin: 0;
 }
 
+#sample-job-list {
+  margin-top: 14px;
+}
+
+#sample-job-list[hidden] {
+  display: none;
+}
+
 .job-card {
   display: flex;
   flex-direction: column;
